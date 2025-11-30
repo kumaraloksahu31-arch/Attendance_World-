@@ -90,20 +90,29 @@ export function DashboardHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              {loading ? <Skeleton className="h-8 w-8 rounded-full" /> : 
+              {loading ? (
+                <Skeleton className="h-8 w-8 rounded-full" />
+              ) : user ? (
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
+                  <AvatarImage src={user.photoURL || undefined} alt={user.displayName || ''} />
                   <AvatarFallback>
-                    {getInitials(user?.displayName)}
+                    {getInitials(user.displayName)}
                   </AvatarFallback>
                 </Avatar>
-              }
+              ) : (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    <User className="h-5 w-5" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            {loading ? <div className="p-2"><Skeleton className="h-10 w-full"/></div> :
-              user && (
+            {loading ? (
+              <div className="p-2"><Skeleton className="h-10 w-full"/></div>
+            ) : user ? (
               <>
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
@@ -128,6 +137,10 @@ export function DashboardHeader() {
                   <LogOut />Logout
                 </DropdownMenuItem>
               </>
+            ) : (
+              <DropdownMenuItem asChild>
+                <Link href="/"><LogOut/>Login</Link>
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
