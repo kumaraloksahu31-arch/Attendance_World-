@@ -9,14 +9,15 @@ import {
   updateProfile,
   User,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, displayName: string) => Promise<any>;
+  signUp: (email: string, pass: string, name: string, role: string) => Promise<any>;
   signOut: () => Promise<any>;
 }
 
@@ -45,9 +46,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
-  const signUp = async (email: string, pass: string, displayName: string) => {
+  const signUp = async (email: string, pass: string, displayName: string, role: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(userCredential.user, { displayName });
+    const user = userCredential.user;
+    await updateProfile(user, { displayName });
+
+    // Save user data to Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      displayName: displayName,
+      email: user.email,
+      role: role,
+      createdAt: new Date(),
+    });
+
     return userCredential;
   };
 
