@@ -20,16 +20,17 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const mockUser = {
-  name: 'Admin User',
-  email: 'admin@example.com',
-  role: 'admin',
-  avatar: 'https://avatar.vercel.sh/admin-user.png',
-};
 
 export function DashboardHeader() {
   const [isDark, setIsDark] = useState(false);
+  const { user, signOut, loading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -40,6 +41,32 @@ export function DashboardHeader() {
     document.documentElement.classList.toggle('dark', checked);
     setIsDark(checked);
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push('/');
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: 'An error occurred while logging out.',
+      });
+    }
+  };
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return '';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.charAt(0).toUpperCase();
+  }
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
@@ -63,38 +90,45 @@ export function DashboardHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
-                <AvatarFallback>
-                  {mockUser.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              {loading ? <Skeleton className="h-8 w-8 rounded-full" /> : 
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
+                  <AvatarFallback>
+                    {getInitials(user?.displayName)}
+                  </AvatarFallback>
+                </Avatar>
+              }
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-semibold">{mockUser.name}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {mockUser.email}
-                </span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/settings"><User />My Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/settings"><Settings />Settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="#"><LifeBuoy />Support</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/"><LogOut />Logout</Link>
-            </DropdownMenuItem>
+            {loading ? <div className="p-2"><Skeleton className="h-10 w-full"/></div> :
+              user && (
+              <>
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{user.displayName}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {user.email}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings"><User />My Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings"><Settings />Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="#"><LifeBuoy />Support</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut />Logout
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

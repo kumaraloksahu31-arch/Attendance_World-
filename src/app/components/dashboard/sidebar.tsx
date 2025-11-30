@@ -17,7 +17,6 @@ import {
   Sheet,
   BarChart2,
   Settings,
-  LogOut,
 } from 'lucide-react';
 import { Logo } from '@/app/components/icons';
 import {
@@ -26,14 +25,8 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { useSidebar } from '@/components/ui/sidebar';
-
-// This is a mock user. In a real app, you'd get this from your auth context.
-const mockUser = {
-  name: 'Admin User',
-  email: 'admin@example.com',
-  role: 'admin', // 'admin', 'employee', or 'student'
-  avatar: 'https://avatar.vercel.sh/admin-user.png',
-};
+import { useAuth } from '@/hooks/use-auth';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const navItems = {
   admin: [
@@ -55,10 +48,17 @@ const navItems = {
   ],
 };
 
+// This is a mock user role. In a real app, you'd get this from user data.
+const mockUserRole = 'admin';
+
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const userRole = mockUser.role as keyof typeof navItems;
+  const { user, loading } = useAuth();
+  
+  // For now, we still use a mock role for navigation items.
+  // This could be expanded to read a 'role' from Firestore in the future.
+  const userRole = mockUserRole as keyof typeof navItems;
   const currentNavItems = navItems[userRole] || navItems.student;
 
   const isNavItemActive = (href: string) => {
@@ -67,6 +67,15 @@ export function DashboardSidebar() {
     }
     return pathname.startsWith(href);
   };
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return '';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.charAt(0).toUpperCase();
+  }
 
   return (
     <Sidebar>
@@ -98,20 +107,34 @@ export function DashboardSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center gap-3 p-2">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
-            <AvatarFallback>
-              {mockUser.name.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          {state === 'expanded' && (
-            <div className="flex flex-col truncate">
-              <span className="font-semibold">{mockUser.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {mockUser.email}
-              </span>
-            </div>
-          )}
+          {loading ? (
+            <>
+              <Skeleton className="h-10 w-10 rounded-full" />
+              {state === 'expanded' && (
+                <div className="flex flex-col gap-1 w-32">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-3 w-3/4" />
+                </div>
+              )}
+            </>
+          ) : user ? (
+            <>
+            <Avatar className="h-10 w-10">
+                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || ''} />
+                <AvatarFallback>
+                {getInitials(user.displayName)}
+                </AvatarFallback>
+            </Avatar>
+            {state === 'expanded' && (
+                <div className="flex flex-col truncate">
+                <span className="font-semibold">{user.displayName}</span>
+                <span className="text-xs text-muted-foreground">
+                    {user.email}
+                </span>
+                </div>
+            )}
+            </>
+          ) : null}
         </div>
       </SidebarFooter>
     </Sidebar>

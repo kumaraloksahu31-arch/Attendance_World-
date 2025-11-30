@@ -20,10 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -37,8 +38,10 @@ const formSchema = z.object({
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,14 +54,22 @@ export function RegisterForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Mock registration logic
-    console.log(values);
-    // In a real app, you would handle user creation and email verification here.
-    toast({
-      title: 'Registration Successful',
-      description: 'Please check your email to verify your account.',
+    startTransition(async () => {
+      try {
+        await signUp(values.email, values.password, values.name);
+        toast({
+          title: 'Registration Successful',
+          description: 'Please check your email to verify your account.',
+        });
+        router.push('/');
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Registration Failed',
+          description: error.message || 'An unexpected error occurred.',
+        });
+      }
     });
-    router.push('/');
   }
 
   return (
@@ -71,7 +82,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="John Doe" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -84,7 +95,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="name@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -97,7 +108,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="(123) 456-7890" {...field} />
+                <Input placeholder="(123) 456-7890" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -115,6 +126,7 @@ export function RegisterForm() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     {...field}
+                    disabled={isPending}
                   />
                 </FormControl>
                 <button
@@ -122,6 +134,7 @@ export function RegisterForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  disabled={isPending}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -136,7 +149,7 @@ export function RegisterForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Role</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
@@ -152,7 +165,8 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
           Create Account
         </Button>
       </form>

@@ -13,10 +13,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -25,7 +27,10 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
+  const { signIn } = useAuth();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -36,11 +41,22 @@ export function LoginForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Mock login logic
-    console.log(values);
-    // In a real app, you'd handle authentication here.
-    // On success, redirect to the dashboard.
-    router.push('/dashboard');
+    startTransition(async () => {
+      try {
+        await signIn(values.email, values.password);
+        toast({
+          title: 'Login Successful',
+          description: 'Welcome back!',
+        });
+        router.push('/dashboard');
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error.message || 'An unexpected error occurred.',
+        });
+      }
+    });
   }
 
   return (
@@ -53,7 +69,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="name@example.com" {...field} disabled={isPending} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -76,6 +92,7 @@ export function LoginForm() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     {...field}
+                    disabled={isPending}
                   />
                 </FormControl>
                 <button
@@ -83,6 +100,7 @@ export function LoginForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  disabled={isPending}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -91,7 +109,8 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
           Sign In
         </Button>
       </form>
