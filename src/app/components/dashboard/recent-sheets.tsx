@@ -1,5 +1,7 @@
+
+'use client';
+
 import Link from 'next/link';
-import { sheets } from '@/app/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,10 +19,51 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useEffect, useState } from 'react';
+import type { AttendanceSheet } from '@/app/lib/types';
+import { toDate } from 'date-fns';
+
 
 export function RecentSheets() {
+    const { user, loading: authLoading } = useAuth();
+    const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (user) {
+        const fetchSheets = async () => {
+            try {
+            const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
+            const q = query(sheetsCollection, orderBy('updatedAt', 'desc'), limit(5));
+            const querySnapshot = await getDocs(q);
+            const sheetsData = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate(),
+                updatedAt: data.updatedAt?.toDate(),
+                } as AttendanceSheet
+            });
+            setSheets(sheetsData);
+            } catch (error) {
+            console.error("Failed to fetch recent sheets from Firestore", error);
+            } finally {
+            setLoading(false);
+            }
+        };
+        fetchSheets();
+        } else if (!authLoading) {
+            setLoading(false);
+        }
+    }, [user, authLoading]);
+
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center">
@@ -38,38 +81,49 @@ export function RecentSheets() {
         </Button>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead className="hidden sm:table-cell">Type</TableHead>
-              <TableHead className="hidden md:table-cell">Last Updated</TableHead>
-              <TableHead className="text-right">View</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sheets.slice(0, 5).map((sheet) => (
-              <TableRow key={sheet.id}>
-                <TableCell>
-                  <div className="font-medium">{sheet.title}</div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  <Badge variant={sheet.type === 'student' ? 'secondary' : 'outline'}>
-                    {sheet.type.charAt(0).toUpperCase() + sheet.type.slice(1)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {format(sheet.updatedAt, 'PPP')}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/dashboard/attendance/${sheet.id}`}>Manage</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {loading || authLoading ? (
+            <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        ) : sheets.length > 0 ? (
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead className="hidden sm:table-cell">Type</TableHead>
+                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                <TableHead className="text-right">View</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {sheets.map((sheet) => (
+                <TableRow key={sheet.id}>
+                    <TableCell>
+                    <div className="font-medium">{sheet.title}</div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                    <Badge variant={sheet.type === 'student' ? 'secondary' : 'outline'}>
+                        {sheet.type.charAt(0).toUpperCase() + sheet.type.slice(1)}
+                    </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                     {format(sheet.updatedAt instanceof Date ? sheet.updatedAt : toDate(sheet.updatedAt), 'PPP')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                    <Button asChild size="sm" variant="outline">
+                        <Link href={`/dashboard/attendance/${sheet.id}`}>Manage</Link>
+                    </Button>
+                    </TableCell>
+                </TableRow>
+                ))}
+            </TableBody>
+            </Table>
+        ) : (
+            <div className="text-center py-10">
+                <h3 className="text-lg font-semibold">No Sheets Found</h3>
+                <p className="text-muted-foreground">You have not created any attendance sheets yet.</p>
+            </div>
+        )}
       </CardContent>
     </Card>
   );
