@@ -1,10 +1,8 @@
-'use client';
-
 import { sheets } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 import { AttendanceTable } from '@/app/components/dashboard/attendance-table';
 import { Button } from '@/components/ui/button';
-import { Download, Filter, Calendar as CalendarIcon } from 'lucide-react';
+import { Download, Filter } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,15 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import * as React from "react"
+import { DatePicker } from './date-picker';
+
 
 export default function SheetDetailsPage({ params }: { params: { sheetId: string } }) {
   const sheet = sheets.find((s) => s.id === params.sheetId);
@@ -70,33 +61,4 @@ export default function SheetDetailsPage({ params }: { params: { sheetId: string
       <AttendanceTable sheet={sheet} />
     </div>
   );
-}
-
-function DatePicker() {
-  const [date, setDate] = React.useState<Date>()
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          className={cn(
-            "w-full sm:w-[280px] justify-start text-left font-normal",
-            !date && "text-muted-foreground"
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>Pick a date</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
-  )
 }
