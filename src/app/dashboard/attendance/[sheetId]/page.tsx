@@ -1,4 +1,3 @@
-import { sheets } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Download, Plus } from 'lucide-react';
@@ -6,8 +5,33 @@ import { DatePicker } from './date-picker';
 import { Spreadsheet } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
 
-export default function SheetDetailsPage({ params }: { params: { sheetId: string } }) {
-  const sheet = sheets.find((s) => s.id === params.sheetId);
+// This is a server component, so we can't use hooks like useState or useEffect here.
+// We also can't directly access localStorage.
+// For now, we will simulate fetching the sheet data.
+
+async function getSheet(sheetId: string) {
+  // In a real app, you would fetch this from a database or API.
+  // We can't use localStorage on the server.
+  // This function simulates that by returning a dummy sheet.
+  // The actual sheets are managed on the client in the /dashboard/attendance page.
+  if (sheetId) {
+    return {
+      id: sheetId,
+      title: `Sheet ${sheetId.split('-')[1]}`,
+      type: 'student' as const,
+      view: 'monthly' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'user-1',
+      memberIds: [],
+    };
+  }
+  return null;
+}
+
+
+export default async function SheetDetailsPage({ params }: { params: { sheetId: string } }) {
+  const sheet = await getSheet(params.sheetId);
 
   if (!sheet) {
     notFound();
