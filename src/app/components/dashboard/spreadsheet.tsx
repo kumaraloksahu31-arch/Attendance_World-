@@ -2,7 +2,7 @@
 'use client';
 
 import type { AttendanceSheet } from '@/app/lib/types';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 type SpreadsheetProps = {
   sheet: AttendanceSheet;
@@ -12,6 +12,7 @@ const COLS = 26; // A-Z
 const ROWS = 50;
 
 export function Spreadsheet({ sheet }: SpreadsheetProps) {
+  const [data, setData] = useState<Record<string, string>>({});
 
   const columns = useMemo(() => {
     return Array.from({ length: COLS }, (_, i) => String.fromCharCode(65 + i));
@@ -21,6 +22,10 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
     return Array.from({ length: ROWS }, (_, i) => i + 1);
   }, []);
 
+  const handleCellChange = (row: number, col: string, value: string) => {
+    const cellId = `${col}${row}`;
+    setData(prevData => ({ ...prevData, [cellId]: value }));
+  };
 
   return (
     <div className="flex-1 overflow-auto border rounded-lg">
@@ -50,6 +55,8 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
                     type="text"
                     className="w-full h-full p-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary focus:bg-blue-50 dark:focus:bg-blue-900/20"
                     aria-label={`Cell ${col}${row}`}
+                    value={data[`${col}${row}`] || ''}
+                    onChange={(e) => handleCellChange(row, col, e.target.value)}
                   />
                 </td>
               ))}
