@@ -1,7 +1,8 @@
+
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { AttendanceSheet } from '@/app/lib/types';
 import { users as initialUsers } from '@/app/lib/data';
 import { Badge } from '@/components/ui/badge';
@@ -25,16 +26,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { useAuth } from '@/hooks/use-auth';
 
+const STORAGE_KEY = 'attendance-sheets';
+
 export default function AttendanceSheetsPage() {
   const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
   const [users] = useState(initialUsers);
   const { user } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const storedSheets = localStorage.getItem(STORAGE_KEY);
+      if (storedSheets) {
+        setSheets(JSON.parse(storedSheets, (key, value) => {
+          if (key === 'createdAt' || key === 'updatedAt') {
+            return new Date(value);
+          }
+          return value;
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to parse sheets from localStorage", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sheets));
+    }
+  }, [sheets, isMounted]);
 
   const handleAddSheet = (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
     if (!user) return; // Should not happen if page is protected
@@ -49,6 +76,10 @@ export default function AttendanceSheetsPage() {
     };
     setSheets((prevSheets) => [sheet, ...prevSheets]);
   };
+
+  if (!isMounted) {
+    return null; // or a loading skeleton
+  }
 
   return (
     <div className="flex flex-col gap-8">
