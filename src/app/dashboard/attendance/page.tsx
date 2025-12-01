@@ -35,81 +35,143 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
+import { toDate } from 'date-fns';
 
-const STORAGE_KEY = 'attendance-sheets';
 
 export default function AttendanceSheetsPage() {
   const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
-  const { user } = useAuth();
-  const [isMounted, setIsMounted] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
   const [sheetToEdit, setSheetToEdit] = useState<AttendanceSheet | null>(null);
 
   useEffect(() => {
-    setIsMounted(true);
+    if (user) {
+      const fetchSheets = async () => {
+        try {
+          const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
+          const q = query(sheetsCollection, orderBy('updatedAt', 'desc'));
+          const querySnapshot = await getDocs(q);
+          const sheetsData = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate(),
+              updatedAt: data.updatedAt?.toDate(),
+            } as AttendanceSheet
+          });
+          setSheets(sheetsData);
+        } catch (error) {
+          console.error("Failed to fetch sheets from Firestore", error);
+          toast({
+            variant: 'destructive',
+            title: "Error",
+            description: "Could not fetch your attendance sheets."
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchSheets();
+    } else if (!authLoading) {
+        setLoading(false);
+    }
+  }, [user, authLoading, toast]);
+
+
+  const handleAddSheet = async (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
+    if (!user) return;
+
     try {
-      const storedSheets = localStorage.getItem(STORAGE_KEY);
-      if (storedSheets) {
-        setSheets(JSON.parse(storedSheets, (key, value) => {
-          if (key === 'createdAt' || key === 'updatedAt') {
-            return new Date(value);
-          }
-          return value;
-        }));
-      }
+      const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
+      const docRef = await addDoc(sheetsCollection, {
+        ...newSheet,
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        memberIds: [],
+      });
+      
+      const addedSheet: AttendanceSheet = {
+        id: docRef.id,
+        ...newSheet,
+        createdBy: user.uid,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        memberIds: [],
+      };
+      setSheets((prevSheets) => [addedSheet, ...prevSheets]);
+
     } catch (error) {
-      console.error("Failed to parse sheets from localStorage", error);
+       toast({
+        variant: 'destructive',
+        title: "Error",
+        description: "Could not create the sheet.",
+      });
     }
-  }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sheets));
-    }
-  }, [sheets, isMounted]);
-
-  const handleAddSheet = (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
-    if (!user) return; // Should not happen if page is protected
-
-    const sheet: AttendanceSheet = {
-      id: `sheet-${Date.now()}`,
-      ...newSheet,
-      createdBy: user.uid,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      memberIds: [], // Start with no members
-    };
-    setSheets((prevSheets) => [sheet, ...prevSheets]);
   };
   
-  const handleUpdateSheet = (updatedSheet: AttendanceSheet) => {
-    setSheets(prevSheets => 
-      prevSheets.map(sheet => 
-        sheet.id === updatedSheet.id ? { ...updatedSheet, updatedAt: new Date() } : sheet
-      )
+  const handleUpdateSheet = async (updatedSheet: AttendanceSheet) => {
+    if (!user) return;
+    try {
+        const sheetRef = doc(db, `users/${user.uid}/sheets`, updatedSheet.id);
+        await updateDoc(sheetRef, { 
+            title: updatedSheet.title,
+            updatedAt: serverTimestamp(),
+        });
+        setSheets(prevSheets => 
+            prevSheets.map(sheet => 
+              sheet.id === updatedSheet.id ? { ...updatedSheet, updatedAt: new Date() } : sheet
+            )
+        );
+        setSheetToEdit(null);
+    } catch(error) {
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: 'Could not update the sheet.',
+        });
+    }
+  };
+
+  const handleDelete = async (sheetId: string) => {
+    if(!user) return;
+    try {
+        const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
+        await deleteDoc(sheetRef);
+
+        setSheets(prevSheets => prevSheets.filter(sheet => sheet.id !== sheetId));
+        toast({
+          title: "Sheet Deleted",
+          description: "The attendance sheet has been removed.",
+        });
+        setSheetToDelete(null);
+    } catch(error){
+         toast({
+            variant: 'destructive',
+            title: 'Delete Failed',
+            description: 'Could not delete the sheet.',
+        });
+    }
+  };
+
+  if (loading || authLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
     );
-    setSheetToEdit(null);
-  };
-
-  const handleDelete = (sheetId: string) => {
-    setSheets(prevSheets => prevSheets.filter(sheet => sheet.id !== sheetId));
-    toast({
-      title: "Sheet Deleted",
-      description: "The attendance sheet has been removed.",
-    });
-    setSheetToDelete(null);
-  };
-
-  if (!isMounted) {
-    return null; // or a loading skeleton
   }
 
   return (
@@ -165,7 +227,7 @@ export default function AttendanceSheetsPage() {
                     <TableCell>{sheet.memberIds.length}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>{formatDistanceToNow(sheet.updatedAt, { addSuffix: true })}</span>
+                        <span>{formatDistanceToNow(sheet.updatedAt instanceof Date ? sheet.updatedAt : toDate(sheet.updatedAt), { addSuffix: true })}</span>
                         <span className="text-xs text-muted-foreground">by {creatorName || 'Unknown'}</span>
                       </div>
                     </TableCell>
@@ -216,7 +278,7 @@ export default function AttendanceSheetsPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete your
-              attendance sheet and all of its data.
+              attendance sheet and all of its data from Firestore.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

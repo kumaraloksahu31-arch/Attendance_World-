@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export type User = {
   id: string;
   name: string;
@@ -15,8 +17,8 @@ export type AttendanceSheet = {
     type: 'student' | 'employee';
     view: 'monthly' | 'weekly';
     createdBy: string;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: Date | Timestamp;
+    updatedAt: Date | Timestamp;
     memberIds: string[];
 }
 

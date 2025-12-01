@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // USERS
+    match /users/{userId} {
+      // Anyone can create their own user profile during sign-up
+      allow create: if isSignedIn() && isOwner(userId);
+      // Users can only read and update their own profile
+      allow read, update: if isSignedIn() && isOwner(userId);
+      // Users cannot delete their own profiles
+      allow delete: if false;
+    }
+
+    // ATTENDANCE SHEETS
+    match /users/{userId}/sheets/{sheetId} {
+        // Users can create, read, update, and delete their own attendance sheets
+        allow read, write: if isSignedIn() && isOwner(userId);
+    }
+  }
+}

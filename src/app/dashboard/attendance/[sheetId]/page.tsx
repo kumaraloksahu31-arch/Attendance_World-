@@ -1,40 +1,64 @@
-import { notFound } from 'next/navigation';
+
+'use client';
+
+import { notFound, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
 import { Spreadsheet } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import type { AttendanceSheet } from '@/app/lib/types';
 
-// This is a server component, so we can't use hooks like useState or useEffect here.
-// We also can't directly access localStorage.
-// For now, we will simulate fetching the sheet data.
 
-async function getSheet(sheetId: string) {
-  // In a real app, you would fetch this from a database or API.
-  // We can't use localStorage on the server.
-  // This function simulates that by returning a dummy sheet.
-  // The actual sheets are managed on the client in the /dashboard/attendance page.
-  if (sheetId) {
-    return {
-      id: sheetId,
-      title: `Sheet ${sheetId.split('-')[1]}`,
-      type: 'student' as const,
-      view: 'monthly' as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: 'user-1',
-      memberIds: [],
-    };
+export default function SheetDetailsPage() {
+  const params = useParams();
+  const sheetId = params.sheetId as string;
+  const { user, loading: authLoading } = useAuth();
+  const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && sheetId) {
+      const getSheet = async () => {
+        try {
+          const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
+          const docSnap = await getDoc(sheetRef);
+
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setSheet({ 
+              id: docSnap.id,
+              ...data,
+              createdAt: data.createdAt?.toDate(),
+              updatedAt: data.updatedAt?.toDate(),
+            } as AttendanceSheet);
+          } else {
+            notFound();
+          }
+        } catch (error) {
+          console.error("Error fetching sheet:", error);
+          // Handle error, maybe show a toast
+        } finally {
+          setLoading(false);
+        }
+      };
+      getSheet();
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [user, sheetId, authLoading]);
+
+  if (loading || authLoading) {
+    return <div className="flex justify-center items-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  return null;
-}
-
-
-export default async function SheetDetailsPage({ params }: { params: { sheetId: string } }) {
-  const sheet = await getSheet(params.sheetId);
 
   if (!sheet) {
-    notFound();
+    // This will be handled by notFound() in useEffect, but as a fallback
+    return <div className="text-center py-10">Sheet not found or you do not have permission to view it.</div>;
   }
 
   return (
