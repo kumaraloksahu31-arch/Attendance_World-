@@ -2,11 +2,18 @@
 'use client';
 
 import type { AttendanceSheet } from '@/app/lib/types';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { addDays, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit, GripVertical } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 type SpreadsheetProps = {
   sheet: AttendanceSheet;
@@ -22,6 +29,7 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
   const [numRows, setNumRows] = useState(INITIAL_ROWS);
   const [dateCols, setDateCols] = useState(INITIAL_COLS);
   const [headers, setHeaders] = useState<string[]>(defaultHeaders);
+  const headerInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const today = new Date();
   const dateColumns = useMemo(() => {
@@ -53,19 +61,14 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
   };
 
   const handleDeleteRow = (rowIndex: number) => {
-    // This is a simplified deletion. A more robust solution would re-index the data.
-    // For now, we clear the data of the deleted row and then decrement the row count.
     const newData = { ...data };
     for (let i = 0; i < headers.length; i++) {
-        delete newData[`${i}-${rowIndex + 1}`];
+        delete newData[`${i}-${rowIndex}`];
     }
     for (let i = 0; i < dateCols; i++) {
-        delete newData[`date-${i}-${rowIndex + 1}`];
+        delete newData[`date-${i}-${rowIndex}`];
     }
     setData(newData);
-    // This doesn't actually remove the row but hides it. A real implementation
-    // would need to manage the row array and data mapping more carefully.
-    // For this prototype, we'll just visually remove it.
     if(numRows > 1) setNumRows(prev => prev -1);
   };
 
@@ -73,8 +76,16 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
     if (colIndex < headers.length) {
         setHeaders(prev => prev.filter((_, i) => i !== colIndex));
     } else {
-        setDateCols(prev => prev > 0 ? prev -1 : 0);
+        const dateColIndex = colIndex - headers.length;
+        if(dateColIndex < dateCols) {
+            setDateCols(prev => prev > 0 ? prev -1 : 0);
+        }
     }
+  };
+
+  const handleEditHeader = (index: number) => {
+    headerInputRefs.current[index]?.focus();
+    headerInputRefs.current[index]?.select();
   };
 
   return (
@@ -82,23 +93,33 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border-collapse">
         <thead className="bg-blue-600 sticky top-0 z-10">
           <tr>
-            <th className="sticky left-0 bg-blue-600 w-24 px-2 py-2 text-center text-xs font-medium text-white uppercase tracking-wider"></th>
+            <th className="sticky left-0 bg-blue-600 w-16 px-2 py-2 text-center text-xs font-medium text-white uppercase tracking-wider"></th>
             {headers.map((header, index) => (
               <th 
                 key={`header-${index}`}
                 className="w-48 px-1 py-1 text-left text-xs font-medium text-white uppercase tracking-wider group"
               >
-                <div className="flex items-center justify-between">
-                    <input
-                      type="text"
-                      value={header}
-                      onChange={(e) => handleHeaderChange(index, e.target.value)}
-                      className="w-full bg-transparent p-1 focus:outline-none focus:ring-1 focus:ring-white rounded-sm"
-                    />
-                    <Button size="icon" variant="ghost" onClick={() => handleDeleteCol(index)} className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-blue-500">
-                        <Trash2 className="h-3 w-3 text-white" />
-                    </Button>
-                </div>
+                <ContextMenu>
+                    <ContextMenuTrigger className="flex items-center justify-between w-full">
+                         <input
+                          ref={el => headerInputRefs.current[index] = el}
+                          type="text"
+                          value={header}
+                          onChange={(e) => handleHeaderChange(index, e.target.value)}
+                          className="w-full bg-transparent p-1 focus:outline-none focus:ring-1 focus:ring-white rounded-sm"
+                        />
+                        <GripVertical className="h-4 w-4 text-blue-300 cursor-grab" />
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                        <ContextMenuItem onClick={() => handleEditHeader(index)}>
+                            <Edit className="mr-2 h-4 w-4" /> Rename Column
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem className="text-destructive" onClick={() => handleDeleteCol(index)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Column
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                </ContextMenu>
               </th>
             ))}
             {dateColumns.map((date, index) => (
@@ -106,12 +127,17 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
                 key={date.toISOString()} 
                 className="w-24 px-1 py-1 text-center text-xs font-medium text-white uppercase tracking-wider group"
               >
-                <div className="flex items-center justify-center">
-                    {format(date, 'd/MM')}
-                    <Button size="icon" variant="ghost" onClick={() => handleDeleteCol(headers.length + index)} className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-blue-500">
-                        <Trash2 className="h-3 w-3 text-white" />
-                    </Button>
-                </div>
+                 <ContextMenu>
+                    <ContextMenuTrigger className="flex items-center justify-center w-full">
+                        {format(date, 'd/MM')}
+                        <GripVertical className="h-4 w-4 text-blue-300 cursor-grab ml-2" />
+                    </ContextMenuTrigger>
+                     <ContextMenuContent>
+                        <ContextMenuItem className="text-destructive" onClick={() => handleDeleteCol(headers.length + index)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Column
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                </ContextMenu>
               </th>
             ))}
              <th className="w-12 px-2 py-2 text-center">
@@ -125,11 +151,17 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           {rows.map((row, rowIndex) => (
             <tr key={row} className="group">
-              <td className="sticky left-0 w-24 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 flex items-center justify-between">
-                <span>{row}</span>
-                 <Button size="icon" variant="ghost" onClick={() => handleDeleteRow(rowIndex)} className="h-6 w-6 opacity-0 group-hover:opacity-100">
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                 </Button>
+              <td className="sticky left-0 w-16 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
+                <ContextMenu>
+                    <ContextMenuTrigger className="flex items-center justify-center h-full w-full">
+                      <span>{row}</span>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                        <ContextMenuItem className="text-destructive" onClick={() => handleDeleteRow(rowIndex)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Row
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                </ContextMenu>
               </td>
               {headers.map((header, colIndex) => (
                 <td key={`${colIndex}-${row}`} className="border border-gray-200 dark:border-gray-700">
@@ -161,7 +193,7 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
             </tr>
           ))}
            <tr>
-                <td className="sticky left-0 w-24 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
+                <td className="sticky left-0 w-16 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
                     <Button size="icon" variant="ghost" onClick={handleAddRow} className="h-8 w-8">
                         <Plus className="h-4 w-4" />
                         <span className="sr-only">Add Row</span>
