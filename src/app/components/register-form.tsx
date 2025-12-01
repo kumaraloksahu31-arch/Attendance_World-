@@ -57,7 +57,7 @@ export function RegisterForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       try {
-        await signUp(values.email, values.password, values.name, values.role);
+        await signUp(values.email, values.password, values.name, values.role, values.phone);
         toast({
           title: 'Registration Successful',
           description: 'Please check your email to verify your account.',
