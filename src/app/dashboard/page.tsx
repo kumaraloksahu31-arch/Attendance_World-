@@ -1,8 +1,8 @@
+
 import { StatsCards } from '@/app/components/dashboard/stats-cards';
 import { RecentSheets } from '@/app/components/dashboard/recent-sheets';
 import { InsightsGenerator } from '@/app/components/dashboard/insights-generator';
 import { users, sheets } from '@/app/lib/data';
-import { notFound } from 'next/navigation';
 
 const stats = [
   {
