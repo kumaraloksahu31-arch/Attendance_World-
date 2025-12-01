@@ -62,8 +62,10 @@ export default async function SheetDetailsPage({ params }: { params: { sheetId: 
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <Spreadsheet sheet={sheet} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          <Spreadsheet sheet={sheet} />
+        </div>
       </div>
       
       <SheetTabs />
