@@ -17,19 +17,19 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Cell } from 'recharts';
 
 const chartData = [
-  { month: 'January', attendance: 92 },
-  { month: 'February', attendance: 95 },
-  { month: 'March', attendance: 91 },
-  { month: 'April', attendance: 96 },
-  { month: 'May', attendance: 94 },
-  { month: 'June', attendance: 97 },
-  { month: 'July', attendance: 93 },
+  { month: 'January', attendance: 0 },
+  { month: 'February', attendance: 0 },
+  { month: 'March', attendance: 0 },
+  { month: 'April', attendance: 0 },
+  { month: 'May', attendance: 0 },
+  { month: 'June', attendance: 0 },
+  { month: 'July', attendance: 0 },
 ];
 
 const pieChartData = [
-    { name: 'Students', value: 400, fill: 'hsl(var(--chart-1))' },
-    { name: 'Employees', value: 300, fill: 'hsl(var(--chart-2))' },
-    { name: 'Admins', value: 50, fill: 'hsl(var(--chart-3))' },
+    { name: 'Students', value: 0, fill: 'hsl(var(--chart-1))' },
+    { name: 'Employees', value: 0, fill: 'hsl(var(--chart-2))' },
+    { name: 'Admins', value: 0, fill: 'hsl(var(--chart-3))' },
 ]
 
 const chartConfig = {

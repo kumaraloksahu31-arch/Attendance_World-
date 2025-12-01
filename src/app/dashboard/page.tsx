@@ -1,4 +1,5 @@
 
+
 import { StatsCards } from '@/app/components/dashboard/stats-cards';
 import { RecentSheets } from '@/app/components/dashboard/recent-sheets';
 import { InsightsGenerator } from '@/app/components/dashboard/insights-generator';
@@ -7,23 +8,23 @@ import { users, sheets } from '@/app/lib/data';
 const stats = [
   {
     title: 'Total Sheets',
-    value: sheets.length,
-    change: '+2 this month',
+    value: 0,
+    change: '',
   },
   {
     title: 'Total Members',
-    value: users.length,
-    change: '+10 this month',
+    value: 0,
+    change: '',
   },
   {
     title: 'Overall Attendance',
-    value: '94.5%',
-    change: '+1.2% from last month',
+    value: '0%',
+    change: '',
   },
   {
     title: 'Issues Detected',
-    value: '3',
-    change: '2 new issues',
+    value: '0',
+    change: '',
   },
 ];
 
