@@ -14,6 +14,9 @@ import {
 import {
   LayoutGrid,
   Settings,
+  Users,
+  ClipboardCheck,
+  BarChart,
 } from 'lucide-react';
 import { Logo } from '@/app/components/icons';
 import {
@@ -27,6 +30,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
+    { href: '/dashboard/attendance', label: 'Attendance', icon: ClipboardCheck },
+    { href: '/dashboard/admin/users', label: 'Users', icon: Users, admin: true },
+    { href: '/dashboard/admin/analytics', label: 'Analytics', icon: BarChart, admin: true },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
