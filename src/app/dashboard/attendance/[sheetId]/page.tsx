@@ -1,18 +1,10 @@
 import { sheets } from '@/app/lib/data';
 import { notFound } from 'next/navigation';
-import { AttendanceTable } from '@/app/components/dashboard/attendance-table';
 import { Button } from '@/components/ui/button';
-import { Download, Filter } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Download, Plus } from 'lucide-react';
 import { DatePicker } from './date-picker';
-
+import { Spreadsheet } from '@/app/components/dashboard/spreadsheet';
+import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
 
 export default function SheetDetailsPage({ params }: { params: { sheetId: string } }) {
   const sheet = sheets.find((s) => s.id === params.sheetId);
@@ -22,11 +14,11 @@ export default function SheetDetailsPage({ params }: { params: { sheetId: string
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-[calc(100vh-8rem)] flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight font-headline">{sheet.title}</h1>
         <p className="text-muted-foreground">
-          Manage attendance for {sheet.title}. View: {sheet.view}
+          Manage attendance for {sheet.title}.
         </p>
       </div>
 
@@ -35,30 +27,23 @@ export default function SheetDetailsPage({ params }: { params: { sheetId: string
             <DatePicker />
         </div>
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>Present</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Absent</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Late</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Leave</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button>
+           <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Member
+          </Button>
+          <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
       </div>
 
-      <AttendanceTable sheet={sheet} />
+      <div className="flex-1 flex flex-col">
+        <Spreadsheet sheet={sheet} />
+      </div>
+      
+      <SheetTabs />
+      
     </div>
   );
 }
