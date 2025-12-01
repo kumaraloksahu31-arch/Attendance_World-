@@ -1,6 +1,5 @@
-# Firebase Studio
+# Attendance World
 
-This is a NextJS starter in Firebase Studio.
+A universal multi-device attendance management system built with Next.js and Firebase.
 
-To get started, take a look at src/app/page.tsx."firebase": "^11.10.0",
-
+To get started, run `npm install` and then `npm run dev`.
