@@ -25,6 +25,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { FirebaseError } from 'firebase/app';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -63,10 +64,24 @@ export function RegisterForm() {
         });
         router.push('/');
       } catch (error: any) {
+        let description = 'An unexpected error occurred.';
+        if (error instanceof FirebaseError) {
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              description = 'This email address is already in use by another account.';
+              break;
+            case 'auth/weak-password':
+              description = 'The password is too weak. Please choose a stronger password.';
+              break;
+            default:
+              description = error.message;
+              break;
+          }
+        }
         toast({
           variant: 'destructive',
           title: 'Registration Failed',
-          description: error.message || 'An unexpected error occurred.',
+          description: description,
         });
       }
     });
