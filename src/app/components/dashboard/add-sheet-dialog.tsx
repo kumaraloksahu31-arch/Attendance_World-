@@ -23,20 +23,42 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import type { AttendanceSheet } from '@/app/lib/types';
 
-export function AddSheetDialog() {
+
+type AddSheetDialogProps = {
+  onAddSheet: (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => void;
+};
+
+
+export function AddSheetDialog({ onAddSheet }: AddSheetDialogProps) {
   const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState<'student' | 'employee' | ''>('');
   const { toast } = useToast();
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // In a real app, you'd handle form submission here.
-    // For now, we'll just show a toast and close the dialog.
+    if (!title || !type) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please fill out all fields.',
+      });
+      return;
+    }
+    
+    onAddSheet({ title, type, view: 'monthly' }); // Assuming 'monthly' is a default
+    
     toast({
       title: "Sheet Created",
       description: "Your new attendance sheet has been created.",
     });
+
+    // Reset form and close dialog
     setOpen(false);
+    setTitle('');
+    setType('');
   };
 
   return (
@@ -60,13 +82,24 @@ export function AddSheetDialog() {
               <Label htmlFor="title" className="text-right">
                 Title
               </Label>
-              <Input id="title" placeholder="e.g., Grade 5 Math Class" className="col-span-3" required />
+              <Input 
+                id="title" 
+                placeholder="e.g., Grade 5 Math Class" 
+                className="col-span-3"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required 
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="type" className="text-right">
                 Type
               </Label>
-              <Select required>
+              <Select 
+                onValueChange={(value: 'student' | 'employee') => setType(value)}
+                required
+                value={type}
+              >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a type" />
                 </SelectTrigger>

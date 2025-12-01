@@ -1,5 +1,9 @@
+'use client';
+
 import Link from 'next/link';
-import { sheets, users } from '@/app/lib/data';
+import { useState } from 'react';
+import type { AttendanceSheet } from '@/app/lib/types';
+import { users as initialUsers } from '@/app/lib/data';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -25,8 +29,27 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AttendanceSheetsPage() {
+  const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
+  const [users] = useState(initialUsers);
+  const { user } = useAuth();
+
+  const handleAddSheet = (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
+    if (!user) return; // Should not happen if page is protected
+
+    const sheet: AttendanceSheet = {
+      id: `sheet-${Date.now()}`,
+      ...newSheet,
+      createdBy: user.uid,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      memberIds: [], // Start with no members
+    };
+    setSheets((prevSheets) => [sheet, ...prevSheets]);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -37,7 +60,7 @@ export default function AttendanceSheetsPage() {
               Create and manage attendance for your classes and teams.
             </p>
           </div>
-          <AddSheetDialog />
+          <AddSheetDialog onAddSheet={handleAddSheet} />
         </div>
       </div>
 
@@ -65,6 +88,8 @@ export default function AttendanceSheetsPage() {
             <TableBody>
               {sheets.map((sheet) => {
                 const creator = users.find(u => u.id === sheet.createdBy);
+                const creatorName = creator?.name || (user?.uid === sheet.createdBy ? user.displayName : 'Unknown');
+
                 return (
                 <TableRow key={sheet.id}>
                   <TableCell className="font-medium">
@@ -79,7 +104,7 @@ export default function AttendanceSheetsPage() {
                   <TableCell>
                     <div className="flex flex-col">
                       <span>{formatDistanceToNow(sheet.createdAt, { addSuffix: true })}</span>
-                      <span className="text-xs text-muted-foreground">by {creator?.name || 'Unknown'}</span>
+                      <span className="text-xs text-muted-foreground">by {creatorName || 'Unknown'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
