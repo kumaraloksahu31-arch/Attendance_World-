@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { sheets, users } from '@/app/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -25,6 +24,7 @@ import {
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 
 export default function AttendanceSheetsPage() {
   return (
@@ -37,10 +37,7 @@ export default function AttendanceSheetsPage() {
               Create and manage attendance for your classes and teams.
             </p>
           </div>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Sheet
-          </Button>
+          <AddSheetDialog />
         </div>
       </div>
 
@@ -54,6 +51,7 @@ export default function AttendanceSheetsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {sheets.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
@@ -87,9 +85,9 @@ export default function AttendanceSheetsPage() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <button className="p-2 hover:bg-gray-100 rounded-md">
                           <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild><Link href={`/dashboard/attendance/${sheet.id}`}>View</Link></DropdownMenuItem>
@@ -103,6 +101,12 @@ export default function AttendanceSheetsPage() {
               )})}
             </TableBody>
           </Table>
+          ) : (
+            <div className="text-center py-10">
+              <h3 className="text-lg font-semibold">No Sheets Found</h3>
+              <p className="text-muted-foreground">Get started by creating a new attendance sheet.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
