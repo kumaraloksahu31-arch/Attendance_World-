@@ -1,18 +1,3 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    { "src": "/_next/static/([^/]+)/pages/_app.js", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/_next/static/([^/]+)/pages/index.js", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/_next/static/chunks/main-([^/]+).js", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/_next/static/chunks/webpack-([^/]+).js", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/_next/static/runtime/main-([^/]+).js", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/_next/static/(.*)", "headers": { "cache-control": "public,max-age=31536000,immutable" }},
-    { "src": "/(.*)", "dest": "/" }
-  ]
+  "builds": [{ "src": "package.json", "use": "@vercel/next" }]
 }
