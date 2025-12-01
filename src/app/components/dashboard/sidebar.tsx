@@ -12,10 +12,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
-  Users,
   LayoutGrid,
-  Sheet,
-  BarChart2,
   Settings,
 } from 'lucide-react';
 import { Logo } from '@/app/components/icons';
@@ -28,38 +25,16 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const navItems = {
-  admin: [
+const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { href: '/dashboard/attendance', label: 'Attendance', icon: Sheet },
-    { href: '/dashboard/admin/users', label: 'Users', icon: Users },
-    { href: '/dashboard/admin/analytics', label: 'Analytics', icon: BarChart2 },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  ],
-  employee: [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { href: '/dashboard/attendance', label: 'My Attendance', icon: Sheet },
-    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  ],
-  student: [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { href: '/dashboard/attendance', label: 'My Attendance', icon: Sheet },
-    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  ],
-};
+];
 
-// This is a mock user role. In a real app, you'd get this from user data.
-const mockUserRole = 'admin';
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
   const { user, loading } = useAuth();
-  
-  // For now, we still use a mock role for navigation items.
-  // This could be expanded to read a 'role' from Firestore in the future.
-  const userRole = mockUserRole as keyof typeof navItems;
-  const currentNavItems = navItems[userRole] || navItems.student;
 
   const isNavItemActive = (href: string) => {
     if (href === '/dashboard') {
@@ -89,7 +64,7 @@ export function DashboardSidebar() {
       </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {currentNavItems.map((item) => (
+          {navItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
