@@ -5,28 +5,40 @@ import type { AttendanceSheet } from '@/app/lib/types';
 import { useMemo, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { addDays, format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 type SpreadsheetProps = {
   sheet: AttendanceSheet;
 };
 
-const COLS = 30; // Number of date columns
-const ROWS = 50;
+const INITIAL_COLS = 30;
+const INITIAL_ROWS = 50;
 
 export function Spreadsheet({ sheet }: SpreadsheetProps) {
   const [data, setData] = useState<Record<string, string | boolean>>({});
+  const [numRows, setNumRows] = useState(INITIAL_ROWS);
+  const [numCols, setNumCols] = useState(INITIAL_COLS);
 
   const today = new Date();
   const dateColumns = useMemo(() => {
-    return Array.from({ length: COLS }, (_, i) => addDays(today, i));
-  }, [today]);
+    return Array.from({ length: numCols }, (_, i) => addDays(today, i));
+  }, [today, numCols]);
 
   const rows = useMemo(() => {
-    return Array.from({ length: ROWS }, (_, i) => i + 1);
-  }, []);
+    return Array.from({ length: numRows }, (_, i) => i + 1);
+  }, [numRows]);
 
   const handleCellChange = (cellId: string, value: string | boolean) => {
     setData(prevData => ({ ...prevData, [cellId]: value }));
+  };
+
+  const handleAddRow = () => {
+    setNumRows(prev => prev + 1);
+  };
+
+  const handleAddCol = () => {
+    setNumCols(prev => prev + 1);
   };
 
   const staticHeaders = ["Name", "Phone number", "Techxera ID"];
@@ -53,6 +65,12 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
                 {format(date, 'd/MM')}
               </th>
             ))}
+             <th className="w-12 px-2 py-2 text-center">
+                <Button size="icon" variant="ghost" onClick={handleAddCol} className="h-8 w-8 hover:bg-blue-500">
+                    <Plus className="h-4 w-4 text-white" />
+                    <span className="sr-only">Add Column</span>
+                </Button>
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -87,8 +105,18 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
                   </td>
                 );
               })}
+              <td className="w-12"></td>
             </tr>
           ))}
+           <tr>
+                <td className="sticky left-0 w-16 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 bg-gray-50 dark:bg-gray-800">
+                    <Button size="icon" variant="ghost" onClick={handleAddRow} className="h-8 w-8">
+                        <Plus className="h-4 w-4" />
+                        <span className="sr-only">Add Row</span>
+                    </Button>
+                </td>
+                <td colSpan={staticHeaders.length + numCols + 1}></td>
+            </tr>
         </tbody>
       </table>
     </div>
