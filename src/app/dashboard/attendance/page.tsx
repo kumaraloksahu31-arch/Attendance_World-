@@ -39,6 +39,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
+import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -50,6 +51,7 @@ export default function AttendanceSheetsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
+  const [sheetToEdit, setSheetToEdit] = useState<AttendanceSheet | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -88,6 +90,15 @@ export default function AttendanceSheetsPage() {
     setSheets((prevSheets) => [sheet, ...prevSheets]);
   };
   
+  const handleUpdateSheet = (updatedSheet: AttendanceSheet) => {
+    setSheets(prevSheets => 
+      prevSheets.map(sheet => 
+        sheet.id === updatedSheet.id ? { ...updatedSheet, updatedAt: new Date() } : sheet
+      )
+    );
+    setSheetToEdit(null);
+  };
+
   const handleDelete = (sheetId: string) => {
     setSheets(prevSheets => prevSheets.filter(sheet => sheet.id !== sheetId));
     toast({
@@ -133,7 +144,7 @@ export default function AttendanceSheetsPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Members</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Last Updated</TableHead>
                   <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
@@ -154,21 +165,20 @@ export default function AttendanceSheetsPage() {
                     <TableCell>{sheet.memberIds.length}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span>{formatDistanceToNow(sheet.createdAt, { addSuffix: true })}</span>
+                        <span>{formatDistanceToNow(sheet.updatedAt, { addSuffix: true })}</span>
                         <span className="text-xs text-muted-foreground">by {creatorName || 'Unknown'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="p-2 hover:bg-gray-100 rounded-md">
+                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild><Link href={`/dashboard/attendance/${sheet.id}`}>View</Link></DropdownMenuItem>
-                          {/* <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Duplicate</DropdownMenuItem> */}
+                          <DropdownMenuItem onClick={() => setSheetToEdit(sheet)}>Edit</DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-destructive"
                             onClick={() => setSheetToDelete(sheet.id)}
@@ -191,6 +201,14 @@ export default function AttendanceSheetsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {sheetToEdit && (
+        <EditSheetDialog 
+          sheet={sheetToEdit} 
+          onUpdateSheet={handleUpdateSheet} 
+          onOpenChange={() => setSheetToEdit(null)}
+        />
+      )}
 
       <AlertDialog open={!!sheetToDelete} onOpenChange={(open) => !open && setSheetToDelete(null)}>
         <AlertDialogContent>
