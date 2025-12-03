@@ -41,7 +41,7 @@ import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { useFirebase } from '@/hooks/use-firebase';
+import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { toDate } from 'date-fns';
@@ -50,7 +50,6 @@ import { toDate } from 'date-fns';
 export default function AttendanceSheetsPage() {
   const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
   const { user, loading: authLoading } = useAuth();
-  const { db } = useFirebase();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
@@ -88,7 +87,7 @@ export default function AttendanceSheetsPage() {
     } else if (!authLoading) {
         setLoading(false);
     }
-  }, [user, authLoading, toast, db]);
+  }, [user, authLoading, toast]);
 
 
   const handleAddSheet = async (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
