@@ -1,3 +1,4 @@
+
 'use client';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -20,15 +21,15 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@/firebase';
 
 
 export function DashboardHeader() {
   const [isDark, setIsDark] = useState(false);
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 

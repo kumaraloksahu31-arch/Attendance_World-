@@ -20,49 +20,28 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowUpRight, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { format, toDate } from 'date-fns';
+import { useUser, useCollection } from '@/firebase';
 import type { AttendanceSheet } from '@/app/lib/types';
-import { toDate } from 'date-fns';
+import { useMemo } from 'react';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 
 export function RecentSheets() {
-    const { user, loading: authLoading } = useAuth();
-    const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { user, loading: authLoading } = useUser();
+    
+    const sheetsQuery = useMemo(() => {
+        if (!user) return null;
+        return query(
+            collection(useCollection.getFirestore(), `users/${user.uid}/sheets`),
+            orderBy('updatedAt', 'desc'),
+            limit(5)
+        );
+    }, [user]);
 
-    useEffect(() => {
-        if (user && db) {
-        const fetchSheets = async () => {
-            try {
-            const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
-            const q = query(sheetsCollection, orderBy('updatedAt', 'desc'), limit(5));
-            const querySnapshot = await getDocs(q);
-            const sheetsData = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                id: doc.id,
-                ...data,
-                createdAt: data.createdAt?.toDate(),
-                updatedAt: data.updatedAt?.toDate(),
-                } as AttendanceSheet
-            });
-            setSheets(sheetsData);
-            } catch (error) {
-            console.error("Failed to fetch recent sheets from Firestore", error);
-            } finally {
-            setLoading(false);
-            }
-        };
-        fetchSheets();
-        } else if (!authLoading) {
-            setLoading(false);
-        }
-    }, [user, authLoading]);
+    const { data: sheets, loading: sheetsLoading } = useCollection<AttendanceSheet>(sheetsQuery);
 
+    const loading = authLoading || sheetsLoading;
 
   return (
     <Card>
@@ -81,11 +60,11 @@ export function RecentSheets() {
         </Button>
       </CardHeader>
       <CardContent>
-        {loading || authLoading ? (
+        {loading ? (
             <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-        ) : sheets.length > 0 ? (
+        ) : sheets && sheets.length > 0 ? (
             <Table>
             <TableHeader>
                 <TableRow>

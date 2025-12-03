@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -25,8 +26,8 @@ import {
   AvatarImage,
 } from '@/components/ui/avatar';
 import { useSidebar } from '@/components/ui/sidebar';
-import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUser } from '@/firebase';
 
 const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
@@ -40,7 +41,7 @@ const navItems = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
 
   const isNavItemActive = (href: string) => {
     if (href === '/dashboard') {

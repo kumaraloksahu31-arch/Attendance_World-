@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { AttendanceSheet } from '@/app/lib/types';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,83 +36,44 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Loader2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, toDate } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { useUser, useCollection } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { toDate } from 'date-fns';
-
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 
 export default function AttendanceSheetsPage() {
-  const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
-  const { user, loading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useUser();
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
   const [sheetToEdit, setSheetToEdit] = useState<AttendanceSheet | null>(null);
 
-  useEffect(() => {
-    if (user && db) {
-      const fetchSheets = async () => {
-        try {
-          const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
-          const q = query(sheetsCollection, orderBy('updatedAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-          const sheetsData = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              createdAt: data.createdAt?.toDate(),
-              updatedAt: data.updatedAt?.toDate(),
-            } as AttendanceSheet
-          });
-          setSheets(sheetsData);
-        } catch (error) {
-          console.error("Failed to fetch sheets from Firestore", error);
-          toast({
-            variant: 'destructive',
-            title: "Error",
-            description: "Could not fetch your attendance sheets."
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSheets();
-    } else if (!authLoading) {
-        setLoading(false);
-    }
-  }, [user, authLoading, toast]);
+  const sheetsQuery = useMemo(() => {
+    if (!user) return null;
+    const db = useCollection.getFirestore();
+    return query(collection(db, `users/${user.uid}/sheets`), orderBy('updatedAt', 'desc'));
+  }, [user]);
 
+  const { data: sheets, setData: setSheets, loading: sheetsLoading } = useCollection<AttendanceSheet>(sheetsQuery);
 
   const handleAddSheet = async (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
-    if (!user || !db) return;
-
+    if (!user) return;
+    const db = useCollection.getFirestore();
     try {
       const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
-      const docRef = await addDoc(sheetsCollection, {
+      await addDoc(sheetsCollection, {
         ...newSheet,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         memberIds: [],
       });
-      
-      const addedSheet: AttendanceSheet = {
-        id: docRef.id,
-        ...newSheet,
-        createdBy: user.uid,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        memberIds: [],
-      };
-      setSheets((prevSheets) => [addedSheet, ...prevSheets]);
-
+      toast({
+          title: "Sheet Created",
+          description: "Your new attendance sheet has been created.",
+      });
     } catch (error) {
        toast({
         variant: 'destructive',
@@ -122,19 +83,19 @@ export default function AttendanceSheetsPage() {
     }
   };
   
-  const handleUpdateSheet = async (updatedSheet: AttendanceSheet) => {
-    if (!user || !db) return;
+  const handleUpdateSheet = async (updatedSheetData: Partial<AttendanceSheet> & { id: string }) => {
+    if (!user) return;
+    const db = useCollection.getFirestore();
     try {
-        const sheetRef = doc(db, `users/${user.uid}/sheets`, updatedSheet.id);
+        const sheetRef = doc(db, `users/${user.uid}/sheets`, updatedSheetData.id);
         await updateDoc(sheetRef, { 
-            title: updatedSheet.title,
+            title: updatedSheetData.title,
             updatedAt: serverTimestamp(),
         });
-        setSheets(prevSheets => 
-            prevSheets.map(sheet => 
-              sheet.id === updatedSheet.id ? { ...updatedSheet, updatedAt: new Date() } : sheet
-            )
-        );
+        toast({
+            title: "Sheet Updated",
+            description: "The attendance sheet has been updated.",
+        });
         setSheetToEdit(null);
     } catch(error) {
         toast({
@@ -146,12 +107,11 @@ export default function AttendanceSheetsPage() {
   };
 
   const handleDelete = async (sheetId: string) => {
-    if(!user || !db) return;
+    if(!user) return;
+    const db = useCollection.getFirestore();
     try {
         const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
         await deleteDoc(sheetRef);
-
-        setSheets(prevSheets => prevSheets.filter(sheet => sheet.id !== sheetId));
         toast({
           title: "Sheet Deleted",
           description: "The attendance sheet has been removed.",
@@ -166,7 +126,9 @@ export default function AttendanceSheetsPage() {
     }
   };
 
-  if (loading || authLoading) {
+  const loading = authLoading || sheetsLoading;
+
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -199,7 +161,7 @@ export default function AttendanceSheetsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {sheets.length > 0 ? (
+            {sheets && sheets.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -224,7 +186,7 @@ export default function AttendanceSheetsPage() {
                     <TableCell>
                       <Badge variant="outline">{sheet.type.charAt(0).toUpperCase() + sheet.type.slice(1)}</Badge>
                     </TableCell>
-                    <TableCell>{sheet.memberIds.length}</TableCell>
+                    <TableCell>{sheet.memberIds?.length || 0}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
                         <span>{formatDistanceToNow(sheet.updatedAt instanceof Date ? sheet.updatedAt : toDate(sheet.updatedAt), { addSuffix: true })}</span>
@@ -267,7 +229,7 @@ export default function AttendanceSheetsPage() {
       {sheetToEdit && (
         <EditSheetDialog 
           sheet={sheetToEdit} 
-          onUpdateSheet={handleUpdateSheet} 
+          onUpdateSheet={(updatedSheet) => handleUpdateSheet({ id: sheetToEdit.id, ...updatedSheet})} 
           onOpenChange={() => setSheetToEdit(null)}
         />
       )}

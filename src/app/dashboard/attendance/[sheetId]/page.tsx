@@ -2,15 +2,14 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState, useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
 import { Spreadsheet, type SpreadsheetHandle } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { AttendanceSheet } from '@/app/lib/types';
 import {
   DropdownMenu,
@@ -26,41 +25,18 @@ import { format } from 'date-fns';
 export default function SheetDetailsPage() {
   const params = useParams();
   const sheetId = params.sheetId as string;
-  const { user, loading: authLoading } = useAuth();
-  const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useUser();
   const spreadsheetRef = useRef<SpreadsheetHandle>(null);
 
-  useEffect(() => {
-    if (user && sheetId && db) {
-      const getSheet = async () => {
-        setLoading(true);
-        try {
-          const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
-          const docSnap = await getDoc(sheetRef);
+  const sheetRef = useMemo(() => {
+    if (!user || !sheetId) return null;
+    const db = useDoc.getFirestore();
+    return doc(db, `users/${user.uid}/sheets`, sheetId);
+  }, [user, sheetId]);
 
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setSheet({ 
-              id: docSnap.id,
-              ...data,
-              createdAt: data.createdAt?.toDate(),
-              updatedAt: data.updatedAt?.toDate(),
-            } as AttendanceSheet);
-          } else {
-            notFound();
-          }
-        } catch (error) {
-          console.error("Error fetching sheet:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      getSheet();
-    } else if (!authLoading) {
-      setLoading(false);
-    }
-  }, [user, sheetId, authLoading]);
+  const { data: sheet, loading: sheetLoading } = useDoc<AttendanceSheet>(sheetRef);
+
+  const loading = authLoading || sheetLoading;
 
   const getExportData = () => {
     if (!spreadsheetRef.current) return { headers: [], rows: [] };
@@ -168,12 +144,13 @@ export default function SheetDetailsPage() {
     }
   };
 
-  if (loading || authLoading) {
+  if (loading) {
     return <div className="flex justify-center items-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   if (!sheet) {
-    return <div className="text-center py-10">Sheet not found or you do not have permission to view it.</div>;
+    if (!loading) notFound();
+    return null;
   }
 
   return (

@@ -18,14 +18,9 @@ import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
-
-const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(1, { message: 'Password is required.' }),
-});
+import { useUser } from '@/firebase';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -38,11 +33,16 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+const formSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
+});
+
 export function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useUser();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -54,7 +54,7 @@ export function LoginForm() {
   });
 
   const handleAuthError = (error: any) => {
-    let description = 'An unexpected error occurred.';
+    let description = 'An unexpected error occurred. Please try again.';
     if (error instanceof FirebaseError) {
       switch (error.code) {
         case 'auth/invalid-credential':
@@ -83,7 +83,7 @@ export function LoginForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       try {
-        await signIn(values.email, values.password);
+        await signInWithEmail(values.email, values.password);
         toast({
           title: 'Login Successful',
           description: 'Welcome back!',

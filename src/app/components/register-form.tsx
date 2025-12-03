@@ -18,8 +18,8 @@ import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { FirebaseError } from 'firebase/app';
+import { useUser } from '@/firebase';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -44,7 +44,7 @@ export function RegisterForm() {
   const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,7 +57,7 @@ export function RegisterForm() {
   });
 
   const handleAuthError = (error: any, isGoogleSignIn: boolean = false) => {
-    let description = 'An unexpected error occurred.';
+    let description = 'An unexpected error occurred. Please try again.';
     let title = isGoogleSignIn ? 'Google Sign-In Failed' : 'Registration Failed';
     if (error instanceof FirebaseError) {
       switch (error.code) {
@@ -85,7 +85,11 @@ export function RegisterForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       try {
-        await signUp(values.email, values.password, values.name, 'student', values.phone);
+        await signUp(values.email, values.password, {
+            displayName: values.name,
+            role: 'student',
+            phone: values.phone
+        });
         toast({
           title: 'Registration Successful',
           description: 'Welcome to AttendEase Pro!',
