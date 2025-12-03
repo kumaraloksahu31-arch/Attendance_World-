@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -33,18 +34,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This guards against the dummy object used during build.
-    if (auth && typeof auth.onAuthStateChanged === 'function') {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
+    // This function ensures we don't try to use Firebase until it's initialized on the client.
+    const initializeAuth = async () => {
+      // isSupported() is a good check for client-side environment.
+      // We also check if auth.onAuthStateChanged is a function, which it won't be for the dummy object.
+      if (typeof window !== 'undefined' && typeof auth.onAuthStateChanged === 'function') {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          setUser(user);
+          setLoading(false);
+        });
+        return () => unsubscribe();
+      } else {
+        // If we're on the server or Firebase isn't ready, we're not authenticated.
+        setUser(null);
         setLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
-      // If auth is not ready, we are still in a loading state on the server.
-      // The real check will happen on the client.
-      setLoading(false);
-    }
+      }
+    };
+    
+    initializeAuth();
+    
   }, []);
 
   const signIn = (email: string, pass: string) => {
