@@ -2,7 +2,7 @@
 'use client';
 
 import type { AttendanceSheet } from '@/app/lib/types';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { addDays, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,16 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
+type SpreadsheetDataType = {
+  data: Record<string, string | boolean>;
+  headers: string[];
+  dateColumns: Date[];
+  numRows: number;
+};
+
 type SpreadsheetProps = {
   sheet: AttendanceSheet;
+  onDataChange: (data: SpreadsheetDataType) => void;
 };
 
 const INITIAL_COLS = 3;
@@ -24,14 +32,14 @@ const INITIAL_ROWS = 50;
 
 const defaultHeaders = ["Name", "Phone number", "Techxera ID"];
 
-export function Spreadsheet({ sheet }: SpreadsheetProps) {
+export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
   const [data, setData] = useState<Record<string, string | boolean>>({});
   const [numRows, setNumRows] = useState(INITIAL_ROWS);
   const [dateCols, setDateCols] = useState(INITIAL_COLS);
   const [headers, setHeaders] = useState<string[]>(defaultHeaders);
   const headerInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const dateColumns = useMemo(() => {
     return Array.from({ length: dateCols }, (_, i) => addDays(today, i));
   }, [today, dateCols]);
@@ -39,6 +47,11 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
   const rows = useMemo(() => {
     return Array.from({ length: numRows }, (_, i) => i + 1);
   }, [numRows]);
+  
+  useEffect(() => {
+    onDataChange({ data, headers, dateColumns, numRows });
+  }, [data, headers, dateColumns, numRows, onDataChange]);
+
 
   const handleCellChange = (cellId: string, value: string | boolean) => {
     setData(prevData => ({ ...prevData, [cellId]: value }));
@@ -62,6 +75,8 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
 
   const handleDeleteRow = (rowIndex: number) => {
     const newData = { ...data };
+    // This is a simplified delete, a more robust implementation would shift rows up.
+    // For now, we clear the data and reduce the row count if it's the last one.
     for (let i = 0; i < headers.length; i++) {
         delete newData[`${i}-${rowIndex}`];
     }
@@ -69,7 +84,9 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
         delete newData[`date-${i}-${rowIndex}`];
     }
     setData(newData);
-    if(numRows > 1) setNumRows(prev => prev -1);
+    if (numRows > 1 && rowIndex === numRows) {
+        setNumRows(prev => prev -1);
+    }
   };
 
   const handleDeleteCol = (colIndex: number) => {
@@ -157,18 +174,18 @@ export function Spreadsheet({ sheet }: SpreadsheetProps) {
                       <span>{row}</span>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                        <ContextMenuItem className="text-destructive" onClick={() => handleDeleteRow(rowIndex)}>
+                        <ContextMenuItem className="text-destructive" onClick={() => handleDeleteRow(row)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete Row
                         </ContextMenuItem>
                     </ContextMenuContent>
                 </ContextMenu>
               </td>
-              {headers.map((header, colIndex) => (
+              {headers.map((_header, colIndex) => (
                 <td key={`${colIndex}-${row}`} className="border border-gray-200 dark:border-gray-700">
                   <input
                     type="text"
                     className="w-full h-full p-2 bg-transparent focus:outline-none focus:ring-1 focus:ring-primary focus:bg-blue-50 dark:focus:bg-blue-900/20"
-                    aria-label={`Cell for ${header} row ${row}`}
+                    aria-label={`Cell for ${headers[colIndex]} row ${row}`}
                     value={(data[`${colIndex}-${row}`] as string) || ''}
                     onChange={(e) => handleCellChange(`${colIndex}-${row}`, e.target.value)}
                   />

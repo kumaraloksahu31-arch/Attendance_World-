@@ -2,7 +2,7 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
@@ -18,7 +18,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
 
+type SpreadsheetDataType = {
+  data: Record<string, string | boolean>;
+  headers: string[];
+  dateColumns: Date[];
+  numRows: number;
+};
 
 export default function SheetDetailsPage() {
   const params = useParams();
@@ -27,9 +37,17 @@ export default function SheetDetailsPage() {
   const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // State to hold spreadsheet data for export
+  const [spreadsheetData, setSpreadsheetData] = useState<SpreadsheetDataType | null>(null);
+  
+  const handleDataChange = (data: SpreadsheetDataType) => {
+    setSpreadsheetData(data);
+  };
+
   useEffect(() => {
     if (user && sheetId) {
       const getSheet = async () => {
+        setLoading(true);
         try {
           const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
           const docSnap = await getDoc(sheetRef);
@@ -47,7 +65,6 @@ export default function SheetDetailsPage() {
           }
         } catch (error) {
           console.error("Error fetching sheet:", error);
-          // Handle error, maybe show a toast
         } finally {
           setLoading(false);
         }
@@ -58,12 +75,92 @@ export default function SheetDetailsPage() {
     }
   }, [user, sheetId, authLoading]);
 
+  const getExportData = () => {
+    if (!spreadsheetData) return { headers: [], rows: [] };
+
+    const { data, headers, dateColumns, numRows } = spreadsheetData;
+    const allHeaders = [...headers, ...dateColumns.map(d => format(d, 'd/MM/yy'))];
+    
+    const rows = Array.from({ length: numRows }, (_, rowIndex) => {
+      const row: (string | boolean)[] = [];
+      headers.forEach((_, colIndex) => {
+        row.push(data[`${colIndex}-${rowIndex + 1}`] || '');
+      });
+      dateColumns.forEach((_, dateIndex) => {
+        row.push(data[`date-${dateIndex}-${rowIndex + 1}`] ? 'Present' : 'Absent');
+      });
+      return row;
+    });
+
+    return { headers: allHeaders, rows };
+  }
+
+  const downloadFile = (content: string, fileName: string, contentType: string) => {
+    const a = document.createElement("a");
+    const file = new Blob([content], { type: contentType });
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleExport = (format: 'xlsx' | 'ods' | 'pdf' | 'html' | 'csv' | 'tsv') => {
+    const { headers, rows } = getExportData();
+    if (headers.length === 0) return;
+
+    const title = sheet?.title || 'Attendance-Sheet';
+
+    switch (format) {
+      case 'csv': {
+        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        downloadFile(csvContent, `${title}.csv`, 'text/csv;charset=utf-8;');
+        break;
+      }
+      case 'tsv': {
+        const tsvContent = [headers.join('\t'), ...rows.map(row => row.join('\t'))].join('\n');
+        downloadFile(tsvContent, `${title}.tsv`, 'text/tab-separated-values;charset=utf-8;');
+        break;
+      }
+       case 'html': {
+        let html = `<html><head><title>${title}</title><style>table,th,td{border:1px solid black;border-collapse:collapse;padding:5px;}th{background-color:#f2f2f2;}</style></head><body><h1>${title}</h1><table><thead><tr>`;
+        headers.forEach(h => html += `<th>${h}</th>`);
+        html += '</tr></thead><tbody>';
+        rows.forEach(row => {
+            html += '<tr>';
+            row.forEach(cell => html += `<td>${cell}</td>`);
+            html += '</tr>';
+        });
+        html += '</tbody></table></body></html>';
+        downloadFile(html, `${title}.html`, 'text/html;charset=utf-8;');
+        break;
+      }
+      case 'pdf': {
+        const doc = new jsPDF();
+        doc.text(title, 14, 16);
+        autoTable(doc, {
+          head: [headers],
+          body: rows,
+          startY: 20,
+        });
+        doc.save(`${title}.pdf`);
+        break;
+      }
+      case 'xlsx':
+      case 'ods': {
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+        XLSX.writeFile(wb, `${title}.${format}`);
+        break;
+      }
+    }
+  };
+
   if (loading || authLoading) {
     return <div className="flex justify-center items-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   if (!sheet) {
-    // This will be handled by notFound() in useEffect, but as a fallback
     return <div className="text-center py-10">Sheet not found or you do not have permission to view it.</div>;
   }
 
@@ -93,12 +190,12 @@ export default function SheetDetailsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem>Microsoft Excel (.xlsx)</DropdownMenuItem>
-              <DropdownMenuItem>OpenDocument (.ods)</DropdownMenuItem>
-              <DropdownMenuItem>PDF (.pdf)</DropdownMenuItem>
-              <DropdownMenuItem>Web Page (.html)</DropdownMenuItem>
-              <DropdownMenuItem>Comma Separated Values (.csv)</DropdownMenuItem>
-              <DropdownMenuItem>Tab Separated Values (.tsv)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>Microsoft Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('ods')}>OpenDocument (.ods)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>PDF (.pdf)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('html')}>Web Page (.html)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>Comma Separated Values (.csv)</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('tsv')}>Tab Separated Values (.tsv)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -106,7 +203,7 @@ export default function SheetDetailsPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <Spreadsheet sheet={sheet} />
+          <Spreadsheet sheet={sheet} onDataChange={handleDataChange} />
         </div>
       </div>
       
