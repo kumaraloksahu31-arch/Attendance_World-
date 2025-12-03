@@ -19,19 +19,16 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
-// Check if the API key is available (it won't be during the build process on Vercel)
-if (firebaseConfig.apiKey) {
-    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+  // Only initialize on the client side
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
 } else {
-    // If the API key is not available, we initialize a dummy app.
-    // This is safe because server-side rendering in this app doesn't rely on Firebase.
-    // The real app will be initialized on the client-side.
-    app = getApps().length ? getApp() : initializeApp({});
-    // We provide dummy instances for auth and db to prevent build errors
-    auth = {} as Auth;
-    db = {} as Firestore;
+  // Provide dummy instances for server-side rendering or build process
+  app = {} as FirebaseApp;
+  auth = {} as Auth;
+  db = {} as Firestore;
 }
 
 const analytics = typeof window !== 'undefined' && firebaseConfig.apiKey ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
