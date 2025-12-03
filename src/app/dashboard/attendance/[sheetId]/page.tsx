@@ -12,6 +12,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { AttendanceSheet } from '@/app/lib/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 
 export default function SheetDetailsPage() {
@@ -79,10 +85,22 @@ export default function SheetDetailsPage() {
             <Plus className="mr-2 h-4 w-4" />
             Add Member
           </Button>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>Microsoft Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem>OpenDocument (.ods)</DropdownMenuItem>
+              <DropdownMenuItem>PDF (.pdf)</DropdownMenuItem>
+              <DropdownMenuItem>Web Page (.html)</DropdownMenuItem>
+              <DropdownMenuItem>Comma Separated Values (.csv)</DropdownMenuItem>
+              <DropdownMenuItem>Tab Separated Values (.tsv)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
