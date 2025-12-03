@@ -69,27 +69,32 @@ export default function SheetDetailsPage() {
     const { data, headers, dateColumns, numRows } = spreadsheetData;
     const allHeaders = [...headers, ...dateColumns.map(d => format(d, 'd/MM/yy'))];
     
-    const rows = Array.from({ length: numRows }, (_, rowIndex) => {
-      const rowNum = rowIndex + 1;
-      let hasData = false;
-      const rowData = headers.map((_, colIndex) => {
-        const cellValue = (data[`${colIndex}-${rowNum}`] as string) || '';
-        if (cellValue) hasData = true;
-        return cellValue;
-      });
+    const outputRows = [];
 
-      const dateData = dateColumns.map((_, dateIndex) => {
-        const cellValue = !!data[`date-${dateIndex}-${rowNum}`];
-        if (cellValue) hasData = true;
-        return cellValue ? 'Present' : 'Absent';
-      });
+    for (let rowIndex = 1; rowIndex <= numRows; rowIndex++) {
+        let hasData = false;
+        const rowData = [];
 
-      if (!hasData) return null;
+        // Get text input values
+        for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+            const cellValue = (data[`${colIndex}-${rowIndex}`] as string) || '';
+            if (cellValue) hasData = true;
+            rowData.push(cellValue);
+        }
 
-      return [...rowData, ...dateData];
-    }).filter(row => row !== null) as (string | boolean)[][];
+        // Get checkbox values
+        for (let dateIndex = 0; dateIndex < dateColumns.length; dateIndex++) {
+            const cellValue = !!data[`date-${dateIndex}-${rowIndex}`];
+            if (cellValue) hasData = true; // A checkbox being checked counts as data
+            rowData.push(cellValue ? 'Present' : 'Absent');
+        }
 
-    return { headers: allHeaders, rows };
+        if (hasData) {
+            outputRows.push(rowData);
+        }
+    }
+
+    return { headers: allHeaders, rows: outputRows };
   }
 
   const downloadFile = (content: Blob, fileName: string) => {
@@ -107,8 +112,8 @@ export default function SheetDetailsPage() {
 
   const handleExport = (formatType: 'xlsx' | 'ods' | 'pdf' | 'html' | 'csv' | 'tsv') => {
     const { headers, rows } = getExportData();
-    if (headers.length === 0 || rows.length === 0) {
-      alert("No data to export.");
+    if (rows.length === 0) {
+      alert("There is no data in the sheet to export.");
       return;
     }
 
@@ -146,7 +151,7 @@ export default function SheetDetailsPage() {
         doc.text(title, 14, 16);
         autoTable(doc, {
           head: [headers],
-          body: rows.map(row => row.map(String)), // Ensure all data is string for jspdf-autotable
+          body: rows.map(row => row.map(String)),
           startY: 20,
         });
         doc.save(`${title}.pdf`);
