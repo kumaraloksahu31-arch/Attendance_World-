@@ -10,7 +10,7 @@ import {
   User,
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -33,12 +33,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    // Ensure auth is a valid object before subscribing.
+    // This guards against the dummy object used during build.
+    if (auth && typeof auth.onAuthStateChanged === 'function') {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
+        setLoading(false);
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } else {
+      // If auth is not ready, we are still in a loading state.
+      setLoading(false);
+    }
   }, []);
 
   const signIn = (email: string, pass: string) => {
@@ -57,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: user.email,
       role: role,
       phone: phone,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
     });
 
     return userCredential;
