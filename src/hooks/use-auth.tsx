@@ -9,9 +9,11 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
   User,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +21,7 @@ interface AuthContextType {
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string, name: string, role: string, phone: string) => Promise<any>;
   signOut: () => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  signInWithGoogle: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -72,6 +76,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return userCredential;
   };
+  
+  const signInWithGoogle = async () => {
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
+    if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
+
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    const user = userCredential.user;
+
+    // Check if user already exists in Firestore
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    // If user doesn't exist, create a new document
+    if (!userDoc.exists()) {
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        role: 'student', // Default role
+        phone: user.phoneNumber || '',
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    return userCredential;
+  };
 
   const signOut = () => {
     const auth = getFirebaseAuth();
@@ -85,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signIn,
     signUp,
     signOut,
+    signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
