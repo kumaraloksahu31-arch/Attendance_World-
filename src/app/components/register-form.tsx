@@ -18,7 +18,6 @@ import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { FirebaseError } from 'firebase/app';
 import { useUser } from '@/firebase';
 
 const formSchema = z.object({
@@ -56,62 +55,45 @@ export function RegisterForm() {
     },
   });
 
-  const handleAuthError = (error: any, isGoogleSignIn: boolean = false) => {
-    let description = 'An unexpected error occurred. Please try again.';
-    let title = isGoogleSignIn ? 'Google Sign-In Failed' : 'Registration Failed';
-    if (error instanceof FirebaseError) {
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          description = 'This email address is already in use by another account.';
-          break;
-        case 'auth/weak-password':
-          description = 'The password is too weak. Please choose a stronger password.';
-          break;
-        case 'auth/popup-closed-by-user':
-          description = 'The sign-in popup was closed before completion.';
-          break;
-        default:
-          description = error.message;
-          break;
-      }
-    }
-    toast({
-      variant: 'destructive',
-      title: title,
-      description: description,
-    });
-  };
-
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      try {
-        await signUp(values.email, values.password, {
-            displayName: values.name,
-            role: 'student',
-            phone: values.phone
-        });
-        toast({
-          title: 'Registration Successful',
-          description: 'Welcome to AttendEase Pro!',
-        });
-        router.push('/dashboard');
-      } catch (error) {
-        handleAuthError(error);
+      const { error } = await signUp(values.email, values.password, {
+          displayName: values.name,
+          role: 'student',
+          phone: values.phone
+      });
+
+      if (error) {
+          toast({
+              variant: 'destructive',
+              title: 'Registration Failed',
+              description: error,
+          });
+      } else {
+          toast({
+            title: 'Registration Successful',
+            description: 'Welcome to AttendEase Pro!',
+          });
+          router.push('/dashboard');
       }
     });
   }
 
   const handleGoogleSignIn = () => {
     startTransition(async () => {
-      try {
-        await signInWithGoogle();
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Registration Failed',
+            description: error,
+        });
+      } else {
         toast({
           title: 'Registration Successful',
           description: 'Welcome to AttendEase Pro!',
         });
         router.push('/dashboard');
-      } catch (error) {
-        handleAuthError(error, true);
       }
     });
   };

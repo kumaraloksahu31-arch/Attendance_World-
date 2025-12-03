@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useState,
-  useCallback,
   ReactNode,
 } from 'react';
 import {
@@ -19,6 +18,7 @@ import {
   GoogleAuthProvider,
   type User as FirebaseUser,
 } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase/provider';
 
@@ -28,16 +28,42 @@ interface UserProfileData {
     phone: string;
 }
 
+interface AuthResult {
+    error: string | null;
+}
+
 interface UserContextType {
   user: FirebaseUser | null;
   loading: boolean;
-  signInWithEmail: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, profileData: UserProfileData) => Promise<any>;
+  signInWithEmail: (email: string, pass: string) => Promise<AuthResult>;
+  signUp: (email: string, pass: string, profileData: UserProfileData) => Promise<AuthResult>;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<any>;
+  signInWithGoogle: () => Promise<AuthResult>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
+
+const handleAuthError = (error: any): string => {
+    if (error instanceof FirebaseError) {
+      switch (error.code) {
+        case 'auth/invalid-credential':
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          return 'Invalid email or password. Please try again.';
+        case 'auth/email-already-in-use':
+          return 'This email address is already in use by another account.';
+        case 'auth/weak-password':
+          return 'The password is too weak. Please choose a stronger password.';
+        case 'auth/user-disabled':
+          return 'This account has been disabled.';
+        case 'auth/popup-closed-by-user':
+          return 'The sign-in popup was closed before completion.';
+        default:
+          return error.message;
+      }
+    }
+    return 'An unexpected error occurred. Please try again.';
+};
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const authInstance = useAuth();
@@ -57,62 +83,67 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [authInstance]);
 
-  const signInWithEmail = useCallback(
-    async (email: string, pass: string) => {
-      if (!authInstance) throw new Error("Auth not initialized");
-      return signInWithEmailAndPassword(authInstance, email, pass);
-    },
-    [authInstance]
-  );
+  const signInWithEmail = async (email: string, pass: string): Promise<AuthResult> => {
+      if (!authInstance) return { error: "Auth not initialized" };
+      try {
+        await signInWithEmailAndPassword(authInstance, email, pass);
+        return { error: null };
+      } catch (e) {
+        return { error: handleAuthError(e) };
+      }
+  };
 
-  const signUp = useCallback(
-    async (email: string, pass: string, profileData: UserProfileData) => {
-      if (!authInstance || !firestoreInstance) throw new Error("Firebase not initialized");
-      const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
-      const user = userCredential.user;
-      await updateProfile(user, { displayName: profileData.displayName });
+  const signUp = async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
+      if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
+      try {
+        const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: profileData.displayName });
 
-      await setDoc(doc(firestoreInstance, "users", user.uid), {
-        uid: user.uid,
-        displayName: profileData.displayName,
-        email: user.email,
-        role: profileData.role,
-        phone: profileData.phone,
-        createdAt: serverTimestamp(),
-      });
-
-      return userCredential;
-    },
-    [authInstance, firestoreInstance]
-  );
-
-  const signInWithGoogle = useCallback(async () => {
-    if (!authInstance || !firestoreInstance) throw new Error("Firebase not initialized");
-    const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(authInstance, provider);
-    const user = userCredential.user;
-
-    const userDocRef = doc(firestoreInstance, 'users', user.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        displayName: user.displayName,
-        email: user.email,
-        role: 'student', // Default role for Google Sign-In
-        phone: user.phoneNumber || '',
-        createdAt: serverTimestamp(),
-      });
+        await setDoc(doc(firestoreInstance, "users", user.uid), {
+            uid: user.uid,
+            displayName: profileData.displayName,
+            email: user.email,
+            role: profileData.role,
+            phone: profileData.phone,
+            createdAt: serverTimestamp(),
+        });
+        return { error: null };
+    } catch (e) {
+        return { error: handleAuthError(e) };
     }
+  };
 
-    return userCredential;
-  }, [authInstance, firestoreInstance]);
+  const signInWithGoogle = async (): Promise<AuthResult> => {
+    if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
+    try {
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(authInstance, provider);
+        const user = userCredential.user;
 
-  const signOut = useCallback(() => {
+        const userDocRef = doc(firestoreInstance, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: 'student', // Default role for Google Sign-In
+            phone: user.phoneNumber || '',
+            createdAt: serverTimestamp(),
+          });
+        }
+        return { error: null };
+    } catch (e) {
+        return { error: handleAuthError(e) };
+    }
+  };
+
+  const signOut = () => {
     if (!authInstance) throw new Error("Auth not initialized");
     return firebaseSignOut(authInstance);
-  }, [authInstance]);
+  };
 
   const value = {
     user,

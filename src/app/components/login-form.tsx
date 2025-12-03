@@ -19,7 +19,6 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { FirebaseError } from 'firebase/app';
 import { useUser } from '@/firebase';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -53,59 +52,40 @@ export function LoginForm() {
     },
   });
 
-  const handleAuthError = (error: any) => {
-    let description = 'An unexpected error occurred. Please try again.';
-    if (error instanceof FirebaseError) {
-      switch (error.code) {
-        case 'auth/invalid-credential':
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-          description = 'Invalid email or password. Please try again.';
-          break;
-        case 'auth/user-disabled':
-          description = 'This account has been disabled.';
-          break;
-        case 'auth/popup-closed-by-user':
-          description = 'The sign-in popup was closed before completion.';
-          break;
-        default:
-          description = error.message;
-          break;
-      }
-    }
-    toast({
-      variant: 'destructive',
-      title: 'Login Failed',
-      description: description,
-    });
-  };
-
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      try {
-        await signInWithEmail(values.email, values.password);
+      const { error } = await signInWithEmail(values.email, values.password);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error,
+        });
+      } else {
         toast({
           title: 'Login Successful',
           description: 'Welcome back!',
         });
         router.push('/dashboard');
-      } catch (error) {
-        handleAuthError(error);
       }
     });
   }
 
   const handleGoogleSignIn = () => {
     startTransition(async () => {
-      try {
-        await signInWithGoogle();
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: error,
+        });
+      } else {
         toast({
           title: 'Login Successful',
           description: 'Welcome back!',
         });
         router.push('/dashboard');
-      } catch (error) {
-        handleAuthError(error);
       }
     });
   };
