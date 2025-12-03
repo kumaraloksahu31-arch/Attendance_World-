@@ -1,7 +1,14 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React,
+{
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode
+} from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -13,15 +20,14 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase'; // Direct import
-import type { Auth } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase'; // Direct import of initialized services
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string, name: string, role: string, phone: string) => Promise<any>;
-  signOut: () => Promise<any>;
+  signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<any>;
 }
 
@@ -39,13 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // onAuthStateChanged returns an unsubscriber
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
