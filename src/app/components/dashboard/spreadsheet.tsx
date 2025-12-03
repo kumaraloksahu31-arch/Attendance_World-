@@ -54,9 +54,9 @@ export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
     return () => {
       onDataChange({ data, headers, dateColumns, numRows });
     };
-    // By removing the dependencies that change on every render, we break the loop.
-    // We only want to "flush" the data up on unmount or if the core sheet changes.
-  }, [sheet.id, onDataChange, data, headers, dateColumns, numRows]);
+    // By removing the dependencies, we ensure this only runs on unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheet.id]);
 
 
   const handleCellChange = (cellId: string, value: string | boolean) => {

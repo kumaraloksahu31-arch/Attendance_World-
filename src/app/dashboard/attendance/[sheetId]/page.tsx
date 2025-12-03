@@ -2,7 +2,7 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
@@ -40,9 +40,9 @@ export default function SheetDetailsPage() {
   // State to hold spreadsheet data for export
   const [spreadsheetData, setSpreadsheetData] = useState<SpreadsheetDataType | null>(null);
   
-  const handleDataChange = (data: SpreadsheetDataType) => {
+  const handleDataChange = useCallback((data: SpreadsheetDataType) => {
     setSpreadsheetData(data);
-  };
+  }, []);
 
   useEffect(() => {
     if (user && sheetId) {
@@ -82,6 +82,10 @@ export default function SheetDetailsPage() {
     const allHeaders = [...headers, ...dateColumns.map(d => format(d, 'd/MM/yy'))];
     
     const rows = Array.from({ length: numRows }, (_, rowIndex) => {
+      // Only include rows that have at least one data point to avoid exporting empty rows
+      const hasData = headers.some((_, colIndex) => !!data[`${colIndex}-${rowIndex + 1}`]) || dateColumns.some((_, dateIndex) => !!data[`date-${dateIndex}-${rowIndex + 1}`]);
+      if (!hasData) return null;
+
       const row: (string | boolean)[] = [];
       headers.forEach((_, colIndex) => {
         row.push(data[`${colIndex}-${rowIndex + 1}`] || '');
@@ -90,7 +94,7 @@ export default function SheetDetailsPage() {
         row.push(data[`date-${dateIndex}-${rowIndex + 1}`] ? 'Present' : 'Absent');
       });
       return row;
-    });
+    }).filter(Boolean) as (string | boolean)[][];
 
     return { headers: allHeaders, rows };
   }
@@ -99,20 +103,23 @@ export default function SheetDetailsPage() {
     const a = document.createElement("a");
     const file = new Blob([content], { type: contentType });
     a.href = URL.createObjectURL(file);
-    a.download = fileName;
+a.download = fileName;
     a.click();
     URL.revokeObjectURL(a.href);
   };
 
-  const handleExport = (format: 'xlsx' | 'ods' | 'pdf' | 'html' | 'csv' | 'tsv') => {
+  const handleExport = (formatType: 'xlsx' | 'ods' | 'pdf' | 'html' | 'csv' | 'tsv') => {
     const { headers, rows } = getExportData();
-    if (headers.length === 0) return;
+    if (headers.length === 0 || rows.length === 0) {
+      alert("No data to export.");
+      return;
+    }
 
     const title = sheet?.title || 'Attendance-Sheet';
 
-    switch (format) {
+    switch (formatType) {
       case 'csv': {
-        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
         downloadFile(csvContent, `${title}.csv`, 'text/csv;charset=utf-8;');
         break;
       }
@@ -139,7 +146,7 @@ export default function SheetDetailsPage() {
         doc.text(title, 14, 16);
         autoTable(doc, {
           head: [headers],
-          body: rows,
+          body: rows.map(row => row.map(String)), // Ensure all data is string for jspdf-autotable
           startY: 20,
         });
         doc.save(`${title}.pdf`);
@@ -150,7 +157,7 @@ export default function SheetDetailsPage() {
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-        XLSX.writeFile(wb, `${title}.${format}`);
+        XLSX.writeFile(wb, `${title}.${formatType}`);
         break;
       }
     }
