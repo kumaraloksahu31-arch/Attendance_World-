@@ -33,26 +33,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Ensure auth is a valid object before subscribing.
     // This guards against the dummy object used during build.
     if (auth && typeof auth.onAuthStateChanged === 'function') {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setUser(user);
         setLoading(false);
       });
-
       return () => unsubscribe();
     } else {
-      // If auth is not ready, we are still in a loading state.
+      // If auth is not ready, we are still in a loading state on the server.
+      // The real check will happen on the client.
       setLoading(false);
     }
   }, []);
 
   const signIn = (email: string, pass: string) => {
+    // Use auth directly from firebase import to ensure it's the initialized one
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
   const signUp = async (email: string, pass: string, displayName: string, role: string, phone: string) => {
+    // Use auth directly from firebase import
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
     await updateProfile(user, { displayName });
@@ -71,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = () => {
+    // Use auth directly from firebase import
     return firebaseSignOut(auth);
   };
   
