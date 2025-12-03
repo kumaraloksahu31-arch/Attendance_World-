@@ -2,7 +2,7 @@
 'use client';
 
 import type { AttendanceSheet } from '@/app/lib/types';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { addDays, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,10 @@ type SpreadsheetDataType = {
 
 type SpreadsheetProps = {
   sheet: AttendanceSheet;
-  onDataChange: (data: SpreadsheetDataType) => void;
+};
+
+export type SpreadsheetHandle = {
+  getSpreadsheetData: () => SpreadsheetDataType;
 };
 
 const INITIAL_COLS = 3;
@@ -32,7 +35,7 @@ const INITIAL_ROWS = 50;
 
 const defaultHeaders = ["Name", "Phone number", "Techxera ID"];
 
-export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
+export const Spreadsheet = forwardRef<SpreadsheetHandle, SpreadsheetProps>(({ sheet }, ref) => {
   const [data, setData] = useState<Record<string, string | boolean>>({});
   const [numRows, setNumRows] = useState(INITIAL_ROWS);
   const [dateCols, setDateCols] = useState(INITIAL_COLS);
@@ -48,16 +51,11 @@ export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
     return Array.from({ length: numRows }, (_, i) => i + 1);
   }, [numRows]);
   
-  useEffect(() => {
-    // This effect should run when the component unmounts or the sheet changes,
-    // to pass the final data up to the parent.
-    return () => {
-      onDataChange({ data, headers, dateColumns, numRows });
-    };
-    // By removing the dependencies, we ensure this only runs on unmount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheet.id]);
-
+  useImperativeHandle(ref, () => ({
+    getSpreadsheetData() {
+      return { data, headers, dateColumns, numRows };
+    }
+  }));
 
   const handleCellChange = (cellId: string, value: string | boolean) => {
     setData(prevData => ({ ...prevData, [cellId]: value }));
@@ -228,4 +226,6 @@ export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
       </table>
     </div>
   );
-}
+});
+
+Spreadsheet.displayName = "Spreadsheet";

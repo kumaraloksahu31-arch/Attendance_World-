@@ -2,11 +2,11 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
-import { Spreadsheet } from '@/app/components/dashboard/spreadsheet';
+import { Spreadsheet, type SpreadsheetHandle } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -23,26 +23,13 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
-type SpreadsheetDataType = {
-  data: Record<string, string | boolean>;
-  headers: string[];
-  dateColumns: Date[];
-  numRows: number;
-};
-
 export default function SheetDetailsPage() {
   const params = useParams();
   const sheetId = params.sheetId as string;
   const { user, loading: authLoading } = useAuth();
   const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // State to hold spreadsheet data for export
-  const [spreadsheetData, setSpreadsheetData] = useState<SpreadsheetDataType | null>(null);
-  
-  const handleDataChange = useCallback((data: SpreadsheetDataType) => {
-    setSpreadsheetData(data);
-  }, []);
+  const spreadsheetRef = useRef<SpreadsheetHandle>(null);
 
   useEffect(() => {
     if (user && sheetId) {
@@ -76,22 +63,23 @@ export default function SheetDetailsPage() {
   }, [user, sheetId, authLoading]);
 
   const getExportData = () => {
-    if (!spreadsheetData) return { headers: [], rows: [] };
+    if (!spreadsheetRef.current) return { headers: [], rows: [] };
 
+    const spreadsheetData = spreadsheetRef.current.getSpreadsheetData();
     const { data, headers, dateColumns, numRows } = spreadsheetData;
     const allHeaders = [...headers, ...dateColumns.map(d => format(d, 'd/MM/yy'))];
     
     const rows = Array.from({ length: numRows }, (_, rowIndex) => {
-      // Only include rows that have at least one data point to avoid exporting empty rows
-      const hasData = headers.some((_, colIndex) => !!data[`${colIndex}-${rowIndex + 1}`]) || dateColumns.some((_, dateIndex) => !!data[`date-${dateIndex}-${rowIndex + 1}`]);
+      const rowNum = rowIndex + 1;
+      const hasData = headers.some((_, colIndex) => !!data[`${colIndex}-${rowNum}`]) || dateColumns.some((_, dateIndex) => !!data[`date-${dateIndex}-${rowNum}`]);
       if (!hasData) return null;
 
       const row: (string | boolean)[] = [];
       headers.forEach((_, colIndex) => {
-        row.push(data[`${colIndex}-${rowIndex + 1}`] || '');
+        row.push(data[`${colIndex}-${rowNum}`] || '');
       });
       dateColumns.forEach((_, dateIndex) => {
-        row.push(data[`date-${dateIndex}-${rowIndex + 1}`] ? 'Present' : 'Absent');
+        row.push(data[`date-${dateIndex}-${rowNum}`] ? 'Present' : 'Absent');
       });
       return row;
     }).filter(Boolean) as (string | boolean)[][];
@@ -103,7 +91,7 @@ export default function SheetDetailsPage() {
     const a = document.createElement("a");
     const file = new Blob([content], { type: contentType });
     a.href = URL.createObjectURL(file);
-a.download = fileName;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -210,7 +198,7 @@ a.download = fileName;
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
-          <Spreadsheet sheet={sheet} onDataChange={handleDataChange} />
+          <Spreadsheet ref={spreadsheetRef} sheet={sheet} />
         </div>
       </div>
       
