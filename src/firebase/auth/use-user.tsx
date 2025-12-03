@@ -40,33 +40,33 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const authInstance = useAuth();
+  const firestoreInstance = useFirestore();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
       setUser(user);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [auth]);
+  }, [authInstance]);
 
   const signInWithEmail = useCallback(
-    (email: string, pass: string) => {
-      return signInWithEmailAndPassword(auth, email, pass);
+    async (email: string, pass: string) => {
+      return signInWithEmailAndPassword(authInstance, email, pass);
     },
-    [auth]
+    [authInstance]
   );
 
   const signUp = useCallback(
     async (email: string, pass: string, profileData: UserProfileData) => {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
       const user = userCredential.user;
       await updateProfile(user, { displayName: profileData.displayName });
 
-      await setDoc(doc(firestore, "users", user.uid), {
+      await setDoc(doc(firestoreInstance, "users", user.uid), {
         uid: user.uid,
         displayName: profileData.displayName,
         email: user.email,
@@ -77,15 +77,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
       return userCredential;
     },
-    [auth, firestore]
+    [authInstance, firestoreInstance]
   );
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
+    const userCredential = await signInWithPopup(authInstance, provider);
     const user = userCredential.user;
 
-    const userDocRef = doc(firestore, 'users', user.uid);
+    const userDocRef = doc(firestoreInstance, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
     if (!userDoc.exists()) {
@@ -100,11 +100,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     return userCredential;
-  }, [auth, firestore]);
+  }, [authInstance, firestoreInstance]);
 
   const signOut = useCallback(() => {
-    return firebaseSignOut(auth);
-  }, [auth]);
+    return firebaseSignOut(authInstance);
+  }, [authInstance]);
 
   const value = {
     user,
