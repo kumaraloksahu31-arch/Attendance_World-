@@ -12,8 +12,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
-import { useFirebase } from './use-firebase';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase'; // Direct import
 import type { Auth } from 'firebase/auth';
 
 interface AuthContextType {
@@ -35,32 +35,25 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { auth, db } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-    
+    // onAuthStateChanged returns an unsubscriber
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
-    
+
+    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
   const signIn = (email: string, pass: string) => {
-    if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
   const signUp = async (email: string, pass: string, displayName: string, role: string, phone: string) => {
-    if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
-    
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
     await updateProfile(user, { displayName });
@@ -78,8 +71,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const signInWithGoogle = async () => {
-    if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
-
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
@@ -102,7 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = () => {
-    if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return firebaseSignOut(auth);
   };
   
