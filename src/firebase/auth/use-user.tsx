@@ -71,41 +71,41 @@ const handleAuthError = (error: any): string => {
 
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const authInstance = useAuth();
-  const firestoreInstance = useFirestore();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authInstance) {
+    if (!auth) {
         setLoading(false);
         return;
     };
-    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [authInstance]);
+  }, [auth]);
 
   const signInWithEmail = useCallback(async (email: string, pass: string): Promise<AuthResult> => {
-      if (!authInstance) return { error: "Auth not initialized" };
+      if (!auth) return { error: "Auth not initialized" };
       try {
-        await signInWithEmailAndPassword(authInstance, email, pass);
+        await signInWithEmailAndPassword(auth, email, pass);
         return { error: null };
       } catch (e) {
         return { error: handleAuthError(e) };
       }
-  }, [authInstance]);
+  }, [auth]);
 
   const signUp = useCallback(async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
-      if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
+      if (!auth || !firestore) return { error: "Firebase not initialized" };
       try {
-        const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
         await updateProfile(user, { displayName: profileData.displayName });
 
-        await setDoc(doc(firestoreInstance, "users", user.uid), {
+        await setDoc(doc(firestore, "users", user.uid), {
             uid: user.uid,
             displayName: profileData.displayName,
             email: user.email,
@@ -117,16 +117,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (e) {
         return { error: handleAuthError(e) };
     }
-  }, [authInstance, firestoreInstance]);
+  }, [auth, firestore]);
 
   const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
-    if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
+    if (!auth || !firestore) return { error: "Firebase not initialized" };
     try {
         const provider = new GoogleAuthProvider();
-        const userCredential = await signInWithPopup(authInstance, provider);
+        const userCredential = await signInWithPopup(auth, provider);
         const user = userCredential.user;
 
-        const userDocRef = doc(firestoreInstance, 'users', user.uid);
+        const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
@@ -143,12 +143,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (e) {
         return { error: handleAuthError(e) };
     }
-  }, [authInstance, firestoreInstance]);
+  }, [auth, firestore]);
 
   const signOut = useCallback(() => {
-    if (!authInstance) throw new Error("Auth not initialized");
-    return firebaseSignOut(authInstance);
-  }, [authInstance]);
+    if (!auth) throw new Error("Auth not initialized");
+    return firebaseSignOut(auth);
+  }, [auth]);
 
   const value = {
     user,
