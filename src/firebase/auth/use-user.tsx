@@ -59,7 +59,7 @@ const handleAuthError = (error: any): string => {
         case 'auth/popup-closed-by-user':
           return 'The sign-in popup was closed before completion.';
         default:
-          return error.message;
+          return `An unexpected error occurred: ${error.message}`;
       }
     }
     return 'An unexpected error occurred. Please try again.';
