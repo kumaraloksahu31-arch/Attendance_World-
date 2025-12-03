@@ -71,18 +71,23 @@ export default function SheetDetailsPage() {
     
     const rows = Array.from({ length: numRows }, (_, rowIndex) => {
       const rowNum = rowIndex + 1;
-      const hasData = headers.some((_, colIndex) => !!data[`${colIndex}-${rowNum}`]) || dateColumns.some((_, dateIndex) => !!data[`date-${dateIndex}-${rowNum}`]);
+      let hasData = false;
+      const rowData = headers.map((_, colIndex) => {
+        const cellValue = (data[`${colIndex}-${rowNum}`] as string) || '';
+        if (cellValue) hasData = true;
+        return cellValue;
+      });
+
+      const dateData = dateColumns.map((_, dateIndex) => {
+        const cellValue = !!data[`date-${dateIndex}-${rowNum}`];
+        if (cellValue) hasData = true;
+        return cellValue ? 'Present' : 'Absent';
+      });
+
       if (!hasData) return null;
 
-      const row: (string | boolean)[] = [];
-      headers.forEach((_, colIndex) => {
-        row.push((data[`${colIndex}-${rowNum}`] as string) || '');
-      });
-      dateColumns.forEach((_date, dateIndex) => {
-        row.push(data[`date-${dateIndex}-${rowNum}`] ? 'Present' : 'Absent');
-      });
-      return row;
-    }).filter(Boolean) as (string | boolean)[][];
+      return [...rowData, ...dateData];
+    }).filter(row => row !== null) as (string | boolean)[][];
 
     return { headers: allHeaders, rows };
   }
