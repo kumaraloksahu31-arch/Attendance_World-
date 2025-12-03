@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -6,6 +7,7 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
 } from 'react';
 import {
   onAuthStateChanged,
@@ -28,7 +30,7 @@ interface UserProfileData {
     phone: string;
 }
 
-interface AuthResult {
+export interface AuthResult {
     error: string | null;
 }
 
@@ -56,17 +58,47 @@ const handleAuthError = (error: any): string => {
     return 'An unexpected error occurred. Please try again.';
 };
 
-// These functions are now outside the component, ensuring they don't depend on React's lifecycle.
-const signInWithEmail = async (auth: Auth, email: string, pass: string): Promise<AuthResult> => {
+interface UserContextType {
+  user: FirebaseUser | null;
+  loading: boolean;
+  signInWithEmail: (email: string, pass: string) => Promise<AuthResult>;
+  signUp: (email: string, pass: string, profileData: UserProfileData) => Promise<AuthResult>;
+  signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<AuthResult>;
+}
+
+const UserContext = createContext<UserContextType | undefined>(undefined);
+
+export function UserProvider({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    };
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
+  const signInWithEmail = useCallback(async (email: string, pass: string): Promise<AuthResult> => {
+    if (!auth) return { error: 'Authentication service is not available.' };
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       return { error: null };
     } catch (e) {
       return { error: handleAuthError(e) };
     }
-};
+  }, [auth]);
 
-const signUp = async (auth: Auth, firestore: Firestore, email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
+  const signUp = useCallback(async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
+    if (!auth || !firestore) return { error: 'Authentication service is not available.' };
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const user = userCredential.user;
@@ -81,82 +113,50 @@ const signUp = async (auth: Auth, firestore: Firestore, email: string, pass: str
           createdAt: serverTimestamp(),
       });
       return { error: null };
-  } catch (e) {
-      return { error: handleAuthError(e) };
-  }
-};
+    } catch (e) {
+        return { error: handleAuthError(e) };
+    }
+  }, [auth, firestore]);
 
-const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<AuthResult> => {
-  try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.user;
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+    if (!auth || !firestore) return { error: 'Authentication service is not available.' };
+    try {
+        const provider = new GoogleAuthProvider();
+        const userCredential = await signInWithPopup(auth, provider);
+        const user = userCredential.user;
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          uid: user.uid,
-          displayName: user.displayName,
-          email: user.email,
-          role: 'student', // Default role for Google Sign-In
-          phone: user.phoneNumber || '',
-          createdAt: serverTimestamp(),
-        });
-      }
-      return { error: null };
-  } catch (e) {
-      return { error: handleAuthError(e) };
-  }
-};
+        if (!userDoc.exists()) {
+          await setDoc(userDocRef, {
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            role: 'student', // Default role for Google Sign-In
+            phone: user.phoneNumber || '',
+            createdAt: serverTimestamp(),
+          });
+        }
+        return { error: null };
+    } catch (e) {
+        return { error: handleAuthError(e) };
+    }
+  }, [auth, firestore]);
 
-const signOut = (auth: Auth) => {
-  return firebaseSignOut(auth);
-};
-
-
-interface UserContextType {
-  user: FirebaseUser | null;
-  loading: boolean;
-  auth: Auth | null;
-  firestore: Firestore | null;
-  signInWithEmail: (email: string, pass: string) => Promise<AuthResult>;
-  signUp: (email: string, pass: string, profileData: UserProfileData) => Promise<AuthResult>;
-  signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<AuthResult>;
-}
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
-
-export function UserProvider({ children }: { children: ReactNode }) {
-  const authInstance = useAuth();
-  const firestoreInstance = useFirestore();
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!authInstance) {
-        setLoading(false);
-        return;
-    };
-    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [authInstance]);
+  const signOut = useCallback(async () => {
+    if (!auth) return;
+    await firebaseSignOut(auth);
+  }, [auth]);
 
 
   const value = {
     user,
     loading,
-    auth: authInstance,
-    firestore: firestoreInstance,
-    signInWithEmail: (email: string, pass: string) => signInWithEmail(authInstance!, email, pass),
-    signUp: (email: string, pass: string, profileData: UserProfileData) => signUp(authInstance!, firestoreInstance!, email, pass, profileData),
-    signOut: () => signOut(authInstance!),
-    signInWithGoogle: () => signInWithGoogle(authInstance!, firestoreInstance!),
+    signInWithEmail,
+    signUp,
+    signOut,
+    signInWithGoogle,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
