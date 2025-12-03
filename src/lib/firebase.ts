@@ -16,10 +16,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
+// Check if the API key is available (it won't be during the build process on Vercel)
 if (firebaseConfig.apiKey) {
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 } else {
-    // This is a dummy app for build time, it will not work for auth
+    // If the API key is not available, we initialize a dummy app.
+    // This is safe because server-side rendering in this app doesn't rely on Firebase.
+    // The real app will be initialized on the client-side.
     app = getApps().length ? getApp() : initializeApp({});
 }
 
