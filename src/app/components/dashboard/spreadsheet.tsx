@@ -49,8 +49,14 @@ export function Spreadsheet({ sheet, onDataChange }: SpreadsheetProps) {
   }, [numRows]);
   
   useEffect(() => {
-    onDataChange({ data, headers, dateColumns, numRows });
-  }, [data, headers, dateColumns, numRows, onDataChange]);
+    // This effect should run when the component unmounts or the sheet changes,
+    // to pass the final data up to the parent.
+    return () => {
+      onDataChange({ data, headers, dateColumns, numRows });
+    };
+    // By removing the dependencies that change on every render, we break the loop.
+    // We only want to "flush" the data up on unmount or if the core sheet changes.
+  }, [sheet.id, onDataChange, data, headers, dateColumns, numRows]);
 
 
   const handleCellChange = (cellId: string, value: string | boolean) => {
