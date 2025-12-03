@@ -24,7 +24,6 @@ interface UseCollectionReturn<T> {
 export function useCollection<T extends DocumentData>(
   q: Query<DocumentData> | null
 ): UseCollectionReturn<T> {
-  const firestore = useFirestore();
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -32,6 +31,7 @@ export function useCollection<T extends DocumentData>(
   useEffect(() => {
     if (!q) {
       setLoading(false);
+      setData(null);
       return;
     }
 
@@ -61,9 +61,4 @@ export function useCollection<T extends DocumentData>(
   }, [q]); // Re-run effect if query object changes
 
   return { data, loading, error, setData };
-}
-
-// Add a static method to get the firestore instance
-useCollection.getFirestore = function() {
-    return useFirestore();
 }

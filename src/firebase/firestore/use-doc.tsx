@@ -19,7 +19,6 @@ interface UseDocReturn<T> {
 export function useDoc<T extends DocumentData>(
   ref: DocumentReference<DocumentData> | null
 ): UseDocReturn<T> {
-  const firestore = useFirestore();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -27,6 +26,7 @@ export function useDoc<T extends DocumentData>(
   useEffect(() => {
     if (!ref) {
       setLoading(false);
+      setData(null);
       return;
     }
 
@@ -57,10 +57,4 @@ export function useDoc<T extends DocumentData>(
   }, [ref]); // Re-run effect if reference object changes
 
   return { data, loading, error };
-}
-
-
-// Add a static method to get the firestore instance
-useDoc.getFirestore = function() {
-    return useFirestore();
 }

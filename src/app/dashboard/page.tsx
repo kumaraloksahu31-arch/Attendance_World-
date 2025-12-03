@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { StatsCards } from '@/app/components/dashboard/stats-cards';
 import { RecentSheets } from '@/app/components/dashboard/recent-sheets';
 import { InsightsGenerator } from '@/app/components/dashboard/insights-generator';
-import { useUser, useCollection } from '@/firebase';
+import { useUser, useCollection, useFirestore } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -13,6 +13,7 @@ import type { AttendanceSheet } from '@/app/lib/types';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useUser();
+  const firestore = useFirestore();
   const [stats, setStats] = useState([
     { title: 'Total Sheets', value: 0, change: '' },
     { title: 'Total Members', value: 0, change: '' },
@@ -21,9 +22,9 @@ export default function DashboardPage() {
   ]);
 
   const sheetsQuery = useMemo(() => {
-    if (!user) return null;
-    return query(collection(useCollection.getFirestore(), `users/${user.uid}/sheets`));
-  }, [user]);
+    if (!user || !firestore) return null;
+    return query(collection(firestore, `users/${user.uid}/sheets`));
+  }, [user, firestore]);
 
   const { data: sheets, loading: sheetsLoading } = useCollection<AttendanceSheet>(sheetsQuery);
 

@@ -40,29 +40,28 @@ import { formatDistanceToNow, toDate } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
-import { useUser, useCollection } from '@/firebase';
+import { useUser, useCollection, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 
 export default function AttendanceSheetsPage() {
   const { user, loading: authLoading } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
   const [sheetToEdit, setSheetToEdit] = useState<AttendanceSheet | null>(null);
 
   const sheetsQuery = useMemo(() => {
-    if (!user) return null;
-    const db = useCollection.getFirestore();
-    return query(collection(db, `users/${user.uid}/sheets`), orderBy('updatedAt', 'desc'));
-  }, [user]);
+    if (!user || !firestore) return null;
+    return query(collection(firestore, `users/${user.uid}/sheets`), orderBy('updatedAt', 'desc'));
+  }, [user, firestore]);
 
   const { data: sheets, setData: setSheets, loading: sheetsLoading } = useCollection<AttendanceSheet>(sheetsQuery);
 
   const handleAddSheet = async (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
-    if (!user) return;
-    const db = useCollection.getFirestore();
+    if (!user || !firestore) return;
     try {
-      const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
+      const sheetsCollection = collection(firestore, `users/${user.uid}/sheets`);
       await addDoc(sheetsCollection, {
         ...newSheet,
         createdBy: user.uid,
@@ -84,10 +83,9 @@ export default function AttendanceSheetsPage() {
   };
   
   const handleUpdateSheet = async (updatedSheetData: Partial<AttendanceSheet> & { id: string }) => {
-    if (!user) return;
-    const db = useCollection.getFirestore();
+    if (!user || !firestore) return;
     try {
-        const sheetRef = doc(db, `users/${user.uid}/sheets`, updatedSheetData.id);
+        const sheetRef = doc(firestore, `users/${user.uid}/sheets`, updatedSheetData.id);
         await updateDoc(sheetRef, { 
             title: updatedSheetData.title,
             updatedAt: serverTimestamp(),
@@ -107,10 +105,9 @@ export default function AttendanceSheetsPage() {
   };
 
   const handleDelete = async (sheetId: string) => {
-    if(!user) return;
-    const db = useCollection.getFirestore();
+    if(!user || !firestore) return;
     try {
-        const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
+        const sheetRef = doc(firestore, `users/${user.uid}/sheets`, sheetId);
         await deleteDoc(sheetRef);
         toast({
           title: "Sheet Deleted",

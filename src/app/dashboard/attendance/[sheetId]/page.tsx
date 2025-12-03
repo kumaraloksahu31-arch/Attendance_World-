@@ -8,7 +8,7 @@ import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
 import { Spreadsheet, type SpreadsheetHandle } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
-import { useUser, useDoc } from '@/firebase';
+import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { AttendanceSheet } from '@/app/lib/types';
 import {
@@ -26,13 +26,13 @@ export default function SheetDetailsPage() {
   const params = useParams();
   const sheetId = params.sheetId as string;
   const { user, loading: authLoading } = useUser();
+  const firestore = useFirestore();
   const spreadsheetRef = useRef<SpreadsheetHandle>(null);
 
   const sheetRef = useMemo(() => {
-    if (!user || !sheetId) return null;
-    const db = useDoc.getFirestore();
-    return doc(db, `users/${user.uid}/sheets`, sheetId);
-  }, [user, sheetId]);
+    if (!user || !firestore || !sheetId) return null;
+    return doc(firestore, `users/${user.uid}/sheets`, sheetId);
+  }, [user, firestore, sheetId]);
 
   const { data: sheet, loading: sheetLoading } = useDoc<AttendanceSheet>(sheetRef);
 
@@ -79,7 +79,7 @@ export default function SheetDetailsPage() {
     a.href = url;
     a.download = fileName;
     document.body.appendChild(a);
-    a.click();
+a.click();
     setTimeout(() => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);

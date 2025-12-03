@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { format, toDate } from 'date-fns';
-import { useUser, useCollection } from '@/firebase';
+import { useUser, useCollection, useFirestore } from '@/firebase';
 import type { AttendanceSheet } from '@/app/lib/types';
 import { useMemo } from 'react';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -29,15 +29,16 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 export function RecentSheets() {
     const { user, loading: authLoading } = useUser();
+    const firestore = useFirestore();
     
     const sheetsQuery = useMemo(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(useCollection.getFirestore(), `users/${user.uid}/sheets`),
+            collection(firestore, `users/${user.uid}/sheets`),
             orderBy('updatedAt', 'desc'),
             limit(5)
         );
-    }, [user]);
+    }, [user, firestore]);
 
     const { data: sheets, loading: sheetsLoading } = useCollection<AttendanceSheet>(sheetsQuery);
 
