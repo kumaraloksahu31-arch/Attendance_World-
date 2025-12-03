@@ -10,7 +10,7 @@ import {
   updateProfile,
   User,
 } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -34,39 +34,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This function ensures we don't try to use Firebase until it's initialized on the client.
-    const initializeAuth = async () => {
-      // isSupported() is a good check for client-side environment.
-      // We also check if auth.onAuthStateChanged is a function, which it won't be for the dummy object.
-      if (typeof window !== 'undefined' && typeof auth.onAuthStateChanged === 'function') {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          setUser(user);
-          setLoading(false);
-        });
-        return () => unsubscribe();
-      } else {
-        // If we're on the server or Firebase isn't ready, we're not authenticated.
-        setUser(null);
+    const auth = getFirebaseAuth();
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
         setLoading(false);
-      }
-    };
-    
-    initializeAuth();
-    
+      });
+      return () => unsubscribe();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const signIn = (email: string, pass: string) => {
-    // Use auth directly from firebase import to ensure it's the initialized one
+    const auth = getFirebaseAuth();
+    if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
   const signUp = async (email: string, pass: string, displayName: string, role: string, phone: string) => {
-    // Use auth directly from firebase import
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
+    if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
+    
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
     await updateProfile(user, { displayName });
 
-    // Save user data to Firestore
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
       displayName: displayName,
@@ -80,7 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = () => {
-    // Use auth directly from firebase import
+    const auth = getFirebaseAuth();
+    if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return firebaseSignOut(auth);
   };
   

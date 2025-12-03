@@ -1,10 +1,9 @@
-// Import the functions you need from the SDKs you need
+
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "studio-4899358888-9bd13.firebaseapp.com",
@@ -14,23 +13,49 @@ const firebaseConfig = {
   appId: "1:549477142818:web:ba8adff74b42da70cf957b"
 };
 
-// Initialize Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+let analytics: any = null;
 
-if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-  // Only initialize on the client side
-  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  // Provide dummy instances for server-side rendering or build process
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  db = {} as Firestore;
+function initializeFirebase() {
+  if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+    if (!app) {
+      app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+      isSupported().then(yes => {
+        if (yes) {
+          analytics = getAnalytics(app as FirebaseApp);
+        }
+      });
+    }
+  }
 }
 
-const analytics = typeof window !== 'undefined' && firebaseConfig.apiKey ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
+// Call initialization
+initializeFirebase();
 
+export function getFirebaseApp(): FirebaseApp | null {
+  if (!app) initializeFirebase();
+  return app;
+}
+
+export function getFirebaseAuth(): Auth | null {
+  if (!auth) initializeFirebase();
+  return auth;
+}
+
+export function getFirebaseDb(): Firestore | null {
+  if (!db) initializeFirebase();
+  return db;
+}
+
+export function getFirebaseAnalytics() {
+  if (!analytics) initializeFirebase();
+  return analytics;
+}
+
+// Legacy exports for any other parts of the app that might still use them directly
+// Although they should be updated to use the getter functions.
 export { app, auth, db, analytics };
