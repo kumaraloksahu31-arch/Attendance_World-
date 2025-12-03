@@ -18,10 +18,13 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   type User as FirebaseUser,
+  getAuth,
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase/provider';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfileData {
   displayName: string;
