@@ -76,9 +76,9 @@ export function LoginForm() {
       const { error } = await signInWithGoogle();
       if (error) {
         toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: error,
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: error,
         });
       } else {
         toast({

@@ -58,23 +58,23 @@ export function RegisterForm() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       const { error } = await signUp(values.email, values.password, {
-          displayName: values.name,
-          role: 'student',
-          phone: values.phone
+        displayName: values.name,
+        role: 'student',
+        phone: values.phone,
       });
 
       if (error) {
-          toast({
-              variant: 'destructive',
-              title: 'Registration Failed',
-              description: error,
-          });
+        toast({
+          variant: 'destructive',
+          title: 'Registration Failed',
+          description: error,
+        });
       } else {
-          toast({
-            title: 'Registration Successful',
-            description: 'Welcome to AttendEase Pro!',
-          });
-          router.push('/dashboard');
+        toast({
+          title: 'Registration Successful',
+          description: 'Welcome to AttendEase Pro!',
+        });
+        router.push('/dashboard');
       }
     });
   }
@@ -84,9 +84,9 @@ export function RegisterForm() {
       const { error } = await signInWithGoogle();
       if (error) {
         toast({
-            variant: 'destructive',
-            title: 'Registration Failed',
-            description: error,
+          variant: 'destructive',
+          title: 'Registration Failed',
+          description: error,
         });
       } else {
         toast({
