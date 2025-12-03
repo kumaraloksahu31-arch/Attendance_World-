@@ -41,22 +41,23 @@ import { Input } from '@/components/ui/input';
 import { AddSheetDialog } from '@/app/components/dashboard/add-sheet-dialog';
 import { EditSheetDialog } from '@/app/components/dashboard/edit-sheet-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { useFirebase } from '@/hooks/use-firebase';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { toDate } from 'date-fns';
 
 
 export default function AttendanceSheetsPage() {
   const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
   const { user, loading: authLoading } = useAuth();
+  const { db } = useFirebase();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
   const [sheetToEdit, setSheetToEdit] = useState<AttendanceSheet | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       const fetchSheets = async () => {
         try {
           const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
@@ -87,11 +88,11 @@ export default function AttendanceSheetsPage() {
     } else if (!authLoading) {
         setLoading(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, toast, db]);
 
 
   const handleAddSheet = async (newSheet: Omit<AttendanceSheet, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'memberIds'>) => {
-    if (!user) return;
+    if (!user || !db) return;
 
     try {
       const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
@@ -123,7 +124,7 @@ export default function AttendanceSheetsPage() {
   };
   
   const handleUpdateSheet = async (updatedSheet: AttendanceSheet) => {
-    if (!user) return;
+    if (!user || !db) return;
     try {
         const sheetRef = doc(db, `users/${user.uid}/sheets`, updatedSheet.id);
         await updateDoc(sheetRef, { 
@@ -146,7 +147,7 @@ export default function AttendanceSheetsPage() {
   };
 
   const handleDelete = async (sheetId: string) => {
-    if(!user) return;
+    if(!user || !db) return;
     try {
         const sheetRef = doc(db, `users/${user.uid}/sheets`, sheetId);
         await deleteDoc(sheetRef);

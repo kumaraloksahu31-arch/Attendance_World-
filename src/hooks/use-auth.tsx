@@ -12,8 +12,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { useFirebase } from './use-firebase';
+import type { Auth } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -34,31 +35,30 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const { auth, db } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
-        setLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
+    if (!auth) {
       setLoading(false);
+      return;
     }
-  }, []);
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
+  }, [auth]);
 
   const signIn = (email: string, pass: string) => {
-    const auth = getFirebaseAuth();
     if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
   const signUp = async (email: string, pass: string, displayName: string, role: string, phone: string) => {
-    const auth = getFirebaseAuth();
-    const db = getFirebaseDb();
     if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
     
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
@@ -78,25 +78,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const signInWithGoogle = async () => {
-    const auth = getFirebaseAuth();
-    const db = getFirebaseDb();
     if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
 
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
 
-    // Check if user already exists in Firestore
     const userDocRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
-    // If user doesn't exist, create a new document
     if (!userDoc.exists()) {
       await setDoc(userDocRef, {
         uid: user.uid,
         displayName: user.displayName,
         email: user.email,
-        role: 'student', // Default role
+        role: 'student', 
         phone: user.phoneNumber || '',
         createdAt: serverTimestamp(),
       });
@@ -106,7 +102,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = () => {
-    const auth = getFirebaseAuth();
     if (!auth) return Promise.reject(new Error("Firebase Auth not initialized"));
     return firebaseSignOut(auth);
   };

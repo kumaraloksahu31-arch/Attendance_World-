@@ -9,7 +9,7 @@ import { DatePicker } from './date-picker';
 import { Spreadsheet, type SpreadsheetHandle } from '@/app/components/dashboard/spreadsheet';
 import { SheetTabs } from '@/app/components/dashboard/sheet-tabs';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
+import { useFirebase } from '@/hooks/use-firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { AttendanceSheet } from '@/app/lib/types';
 import {
@@ -27,12 +27,13 @@ export default function SheetDetailsPage() {
   const params = useParams();
   const sheetId = params.sheetId as string;
   const { user, loading: authLoading } = useAuth();
+  const { db } = useFirebase();
   const [sheet, setSheet] = useState<AttendanceSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const spreadsheetRef = useRef<SpreadsheetHandle>(null);
 
   useEffect(() => {
-    if (user && sheetId) {
+    if (user && sheetId && db) {
       const getSheet = async () => {
         setLoading(true);
         try {
@@ -60,7 +61,7 @@ export default function SheetDetailsPage() {
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, sheetId, authLoading]);
+  }, [user, sheetId, authLoading, db]);
 
   const getExportData = () => {
     if (!spreadsheetRef.current) return { headers: [], rows: [] };

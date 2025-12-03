@@ -6,12 +6,13 @@ import { StatsCards } from '@/app/components/dashboard/stats-cards';
 import { RecentSheets } from '@/app/components/dashboard/recent-sheets';
 import { InsightsGenerator } from '@/app/components/dashboard/insights-generator';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useFirebase } from '@/hooks/use-firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { db } = useFirebase();
   const [stats, setStats] = useState([
     { title: 'Total Sheets', value: 0, change: '' },
     { title: 'Total Members', value: 0, change: '' },
@@ -21,7 +22,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       const fetchDashboardData = async () => {
         try {
           const sheetsRef = collection(db, `users/${user.uid}/sheets`);
@@ -50,7 +51,7 @@ export default function DashboardPage() {
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, db]);
 
   if (loading || authLoading) {
     return <div className="flex justify-center items-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;

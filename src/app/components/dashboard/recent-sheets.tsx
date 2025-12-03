@@ -22,8 +22,8 @@ import {
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/use-auth';
+import { useFirebase } from '@/hooks/use-firebase';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useEffect, useState } from 'react';
 import type { AttendanceSheet } from '@/app/lib/types';
 import { toDate } from 'date-fns';
@@ -31,11 +31,12 @@ import { toDate } from 'date-fns';
 
 export function RecentSheets() {
     const { user, loading: authLoading } = useAuth();
+    const { db } = useFirebase();
     const [sheets, setSheets] = useState<AttendanceSheet[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
+        if (user && db) {
         const fetchSheets = async () => {
             try {
             const sheetsCollection = collection(db, `users/${user.uid}/sheets`);
@@ -61,7 +62,7 @@ export function RecentSheets() {
         } else if (!authLoading) {
             setLoading(false);
         }
-    }, [user, authLoading]);
+    }, [user, authLoading, db]);
 
 
   return (
