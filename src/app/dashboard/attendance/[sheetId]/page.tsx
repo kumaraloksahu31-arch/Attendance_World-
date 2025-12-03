@@ -2,7 +2,7 @@
 'use client';
 
 import { notFound, useParams } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Plus, Loader2 } from 'lucide-react';
 import { DatePicker } from './date-picker';
@@ -76,9 +76,9 @@ export default function SheetDetailsPage() {
 
       const row: (string | boolean)[] = [];
       headers.forEach((_, colIndex) => {
-        row.push(data[`${colIndex}-${rowNum}`] || '');
+        row.push((data[`${colIndex}-${rowNum}`] as string) || '');
       });
-      dateColumns.forEach((_, dateIndex) => {
+      dateColumns.forEach((_date, dateIndex) => {
         row.push(data[`date-${dateIndex}-${rowNum}`] ? 'Present' : 'Absent');
       });
       return row;
@@ -87,13 +87,17 @@ export default function SheetDetailsPage() {
     return { headers: allHeaders, rows };
   }
 
-  const downloadFile = (content: string, fileName: string, contentType: string) => {
+  const downloadFile = (content: Blob, fileName: string) => {
     const a = document.createElement("a");
-    const file = new Blob([content], { type: contentType });
-    a.href = URL.createObjectURL(file);
+    const url = URL.createObjectURL(content);
+    a.href = url;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }, 0);
   };
 
   const handleExport = (formatType: 'xlsx' | 'ods' | 'pdf' | 'html' | 'csv' | 'tsv') => {
@@ -108,12 +112,14 @@ export default function SheetDetailsPage() {
     switch (formatType) {
       case 'csv': {
         const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
-        downloadFile(csvContent, `${title}.csv`, 'text/csv;charset=utf-8;');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        downloadFile(blob, `${title}.csv`);
         break;
       }
       case 'tsv': {
         const tsvContent = [headers.join('\t'), ...rows.map(row => row.join('\t'))].join('\n');
-        downloadFile(tsvContent, `${title}.tsv`, 'text/tab-separated-values;charset=utf-8;');
+        const blob = new Blob([tsvContent], { type: 'text/tab-separated-values;charset=utf-8;' });
+        downloadFile(blob, `${title}.tsv`);
         break;
       }
        case 'html': {
@@ -126,7 +132,8 @@ export default function SheetDetailsPage() {
             html += '</tr>';
         });
         html += '</tbody></table></body></html>';
-        downloadFile(html, `${title}.html`, 'text/html;charset=utf-8;');
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+        downloadFile(blob, `${title}.html`);
         break;
       }
       case 'pdf': {
