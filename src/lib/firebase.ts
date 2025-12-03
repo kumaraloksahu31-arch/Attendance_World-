@@ -1,8 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,19 +16,23 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
 // Check if the API key is available (it won't be during the build process on Vercel)
 if (firebaseConfig.apiKey) {
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
 } else {
     // If the API key is not available, we initialize a dummy app.
     // This is safe because server-side rendering in this app doesn't rely on Firebase.
     // The real app will be initialized on the client-side.
     app = getApps().length ? getApp() : initializeApp({});
+    // We provide dummy instances for auth and db to prevent build errors
+    auth = {} as Auth;
+    db = {} as Firestore;
 }
-
-
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 const analytics = typeof window !== 'undefined' && firebaseConfig.apiKey ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
 
