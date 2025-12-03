@@ -46,6 +46,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authInstance) {
+        setLoading(false);
+        return;
+    };
     const unsubscribe = onAuthStateChanged(authInstance, (user) => {
       setUser(user);
       setLoading(false);
@@ -55,6 +59,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmail = useCallback(
     async (email: string, pass: string) => {
+      if (!authInstance) throw new Error("Auth not initialized");
       return signInWithEmailAndPassword(authInstance, email, pass);
     },
     [authInstance]
@@ -62,6 +67,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (email: string, pass: string, profileData: UserProfileData) => {
+      if (!authInstance || !firestoreInstance) throw new Error("Firebase not initialized");
       const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
       const user = userCredential.user;
       await updateProfile(user, { displayName: profileData.displayName });
@@ -81,6 +87,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(async () => {
+    if (!authInstance || !firestoreInstance) throw new Error("Firebase not initialized");
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(authInstance, provider);
     const user = userCredential.user;
@@ -103,6 +110,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [authInstance, firestoreInstance]);
 
   const signOut = useCallback(() => {
+    if (!authInstance) throw new Error("Auth not initialized");
     return firebaseSignOut(authInstance);
   }, [authInstance]);
 
