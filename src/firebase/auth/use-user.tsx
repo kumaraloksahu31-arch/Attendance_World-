@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useCallback,
 } from 'react';
 import {
   onAuthStateChanged,
@@ -19,8 +20,9 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase/provider';
+import type { Auth } from 'firebase/auth';
 
 interface UserProfileData {
     displayName: string;
@@ -58,12 +60,15 @@ const handleAuthError = (error: any): string => {
           return 'This account has been disabled.';
         case 'auth/popup-closed-by-user':
           return 'The sign-in popup was closed before completion.';
+        case 'auth/cancelled-popup-request':
+          return 'Sign-in cancelled. Please try again.';
         default:
           return `An unexpected error occurred: ${error.message}`;
       }
     }
     return 'An unexpected error occurred. Please try again.';
 };
+
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const authInstance = useAuth();
@@ -83,7 +88,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [authInstance]);
 
-  const signInWithEmail = async (email: string, pass: string): Promise<AuthResult> => {
+  const signInWithEmail = useCallback(async (email: string, pass: string): Promise<AuthResult> => {
       if (!authInstance) return { error: "Auth not initialized" };
       try {
         await signInWithEmailAndPassword(authInstance, email, pass);
@@ -91,9 +96,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         return { error: handleAuthError(e) };
       }
-  };
+  }, [authInstance]);
 
-  const signUp = async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
+  const signUp = useCallback(async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
       if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
       try {
         const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
@@ -112,9 +117,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (e) {
         return { error: handleAuthError(e) };
     }
-  };
+  }, [authInstance, firestoreInstance]);
 
-  const signInWithGoogle = async (): Promise<AuthResult> => {
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
     if (!authInstance || !firestoreInstance) return { error: "Firebase not initialized" };
     try {
         const provider = new GoogleAuthProvider();
@@ -138,12 +143,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (e) {
         return { error: handleAuthError(e) };
     }
-  };
+  }, [authInstance, firestoreInstance]);
 
-  const signOut = () => {
+  const signOut = useCallback(() => {
     if (!authInstance) throw new Error("Auth not initialized");
     return firebaseSignOut(authInstance);
-  };
+  }, [authInstance]);
 
   const value = {
     user,
