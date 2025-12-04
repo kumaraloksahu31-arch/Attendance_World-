@@ -16,29 +16,33 @@ interface FirebaseInstances {
 
 /**
  * Ensures that Firebase is initialized only once on the client.
+ * It will render its children only after Firebase has been fully initialized.
  */
 export function FirebaseClientProvider({ children }: { children: ReactNode }) {
-  const [firebase, setFirebase] = useState<FirebaseInstances | null>(null);
+  const [instances, setInstances] = useState<FirebaseInstances | null>(null);
 
   useEffect(() => {
-    // This effect runs only on the client, where `window` is available.
+    // This effect runs only on the client.
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     const auth = getAuth(app);
     const firestore = getFirestore(app);
-    setFirebase({ firebaseApp: app, auth, firestore });
+    
+    setInstances({ firebaseApp: app, auth, firestore });
   }, []);
 
-  // While the Firebase app is initializing, we can show a loader or nothing.
-  if (!firebase) {
-    return null; // Or a loading spinner
+  // While the Firebase app is initializing, we render nothing.
+  // This prevents child components from trying to use Firebase services
+  // before they are ready.
+  if (!instances) {
+    return null; 
   }
 
-  // Once initialized, we can render the FirebaseProvider with the instances.
+  // Once initialized, we render the FirebaseProvider with the instances.
   return (
     <FirebaseProvider
-      firebaseApp={firebase.firebaseApp}
-      auth={firebase.auth}
-      firestore={firebase.firestore}
+      firebaseApp={instances.firebaseApp}
+      auth={instances.auth}
+      firestore={instances.firestore}
     >
       {children}
     </FirebaseProvider>
