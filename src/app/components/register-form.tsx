@@ -18,7 +18,6 @@ import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
 import { signUp, signInWithGoogle } from '@/firebase/auth/auth-service';
 
 const formSchema = z.object({
@@ -44,8 +43,6 @@ export function RegisterForm() {
   const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
-  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,9 +55,8 @@ export function RegisterForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth || !firestore) return;
     startTransition(async () => {
-      const { error } = await signUp(auth, firestore, values.email, values.password, {
+      const { error } = await signUp(values.email, values.password, {
         displayName: values.name,
         role: 'student',
         phone: values.phone,
@@ -83,9 +79,8 @@ export function RegisterForm() {
   }
 
   const handleGoogleSignIn = () => {
-    if (!auth || !firestore) return;
     startTransition(async () => {
-      const { error } = await signInWithGoogle(auth, firestore);
+      const { error } = await signInWithGoogle();
       if (error) {
         toast({
           variant: 'destructive',

@@ -19,7 +19,6 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmail, signInWithGoogle } from '@/firebase/auth/auth-service';
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -42,8 +41,6 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -55,9 +52,8 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) return;
     startTransition(async () => {
-      const { error } = await signInWithEmail(auth, values.email, values.password);
+      const { error } = await signInWithEmail(values.email, values.password);
       if (error) {
         toast({
           variant: 'destructive',
@@ -75,9 +71,8 @@ export function LoginForm() {
   }
 
   const handleGoogleSignIn = () => {
-    if (!auth || !firestore) return;
     startTransition(async () => {
-      const { error } = await signInWithGoogle(auth, firestore);
+      const { error } = await signInWithGoogle();
       if (error) {
         toast({
           variant: 'destructive',

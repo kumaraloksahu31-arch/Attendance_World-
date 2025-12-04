@@ -1,4 +1,6 @@
 
+'use server';
+
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -9,6 +11,18 @@ import {
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+
+// Helper to initialize Firebase App and services
+function getFirebaseServices() {
+  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  return { auth, firestore, app };
+}
 
 export interface AuthResult {
   error: string | null;
@@ -44,8 +58,9 @@ const handleAuthError = (error: any): string => {
   return 'An unexpected error occurred. Please try again.';
 };
 
-export const signInWithEmail = async (auth: Auth, email: string, pass: string): Promise<AuthResult> => {
+export const signInWithEmail = async (email: string, pass: string): Promise<AuthResult> => {
   try {
+    const { auth } = getFirebaseServices();
     await signInWithEmailAndPassword(auth, email, pass);
     return { error: null };
   } catch (e) {
@@ -53,8 +68,9 @@ export const signInWithEmail = async (auth: Auth, email: string, pass: string): 
   }
 };
 
-export const signUp = async (auth: Auth, firestore: Firestore, email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
+export const signUp = async (email: string, pass: string, profileData: UserProfileData): Promise<AuthResult> => {
   try {
+    const { auth, firestore } = getFirebaseServices();
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
     await updateProfile(user, { displayName: profileData.displayName });
@@ -73,8 +89,9 @@ export const signUp = async (auth: Auth, firestore: Firestore, email: string, pa
   }
 };
 
-export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<AuthResult> => {
+export const signInWithGoogle = async (): Promise<AuthResult> => {
   try {
+    const { auth, firestore } = getFirebaseServices();
     const provider = new GoogleAuthProvider();
     const userCredential = await signInWithPopup(auth, provider);
     const user = userCredential.user;
@@ -97,3 +114,4 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
     return { error: handleAuthError(e) };
   }
 };
+
