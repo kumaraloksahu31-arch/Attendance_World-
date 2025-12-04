@@ -16,7 +16,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 
-// Helper to initialize Firebase App and services
+// Internal helper to initialize Firebase App and services exactly once.
 function getFirebaseServices() {
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
@@ -52,9 +52,12 @@ const handleAuthError = (error: any): string => {
       case 'auth/cancelled-popup-request':
         return 'Sign-in cancelled. Please try again.';
       default:
-        return `An unexpected error occurred: ${error.message}`;
+        // Log the specific error for debugging if needed
+        console.error('Firebase Auth Error:', error.code, error.message);
+        return `An unexpected error occurred. Please try again.`;
     }
   }
+  console.error('Non-Firebase Auth Error:', error);
   return 'An unexpected error occurred. Please try again.';
 };
 
@@ -73,9 +76,11 @@ export const signUp = async (email: string, pass: string, profileData: UserProfi
     const { auth, firestore } = getFirebaseServices();
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
+    
     await updateProfile(user, { displayName: profileData.displayName });
 
-    await setDoc(doc(firestore, "users", user.uid), {
+    const userDocRef = doc(firestore, "users", user.uid);
+    await setDoc(userDocRef, {
       uid: user.uid,
       displayName: profileData.displayName,
       email: user.email,
@@ -83,6 +88,7 @@ export const signUp = async (email: string, pass: string, profileData: UserProfi
       phone: profileData.phone,
       createdAt: serverTimestamp(),
     });
+    
     return { error: null };
   } catch (e) {
     return { error: handleAuthError(e) };
@@ -114,4 +120,3 @@ export const signInWithGoogle = async (): Promise<AuthResult> => {
     return { error: handleAuthError(e) };
   }
 };
-

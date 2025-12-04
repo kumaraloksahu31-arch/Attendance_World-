@@ -29,7 +29,7 @@ const formSchema = z.object({
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0D 0 48 48" width="24px" height="24px" {...props}>
       <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
       <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
       <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.223,0-9.657-3.657-11.303-8H6.399C9.656,39.663,16.318,44,24,44z" />
@@ -41,6 +41,7 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 export function RegisterForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [isGooglePending, startGoogleTransition] = React.useTransition();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -56,17 +57,17 @@ export function RegisterForm() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      const { error } = await signUp(values.email, values.password, {
+      const result = await signUp(values.email, values.password, {
         displayName: values.name,
-        role: 'student',
+        role: 'student', // Default role for new sign-ups
         phone: values.phone,
       });
 
-      if (error) {
+      if (result.error) {
         toast({
           variant: 'destructive',
           title: 'Registration Failed',
-          description: error,
+          description: result.error,
         });
       } else {
         toast({
@@ -79,13 +80,13 @@ export function RegisterForm() {
   }
 
   const handleGoogleSignIn = () => {
-    startTransition(async () => {
-      const { error } = await signInWithGoogle();
-      if (error) {
+    startGoogleTransition(async () => {
+      const result = await signInWithGoogle();
+      if (result.error) {
         toast({
           variant: 'destructive',
           title: 'Registration Failed',
-          description: error,
+          description: result.error,
         });
       } else {
         toast({
@@ -96,6 +97,8 @@ export function RegisterForm() {
       }
     });
   };
+
+  const anyPending = isPending || isGooglePending;
 
   return (
     <div className="space-y-4">
@@ -108,7 +111,7 @@ export function RegisterForm() {
               <FormItem>
                 <FormLabel>Full Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="John Doe" {...field} disabled={isPending} />
+                  <Input placeholder="John Doe" {...field} disabled={anyPending} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -121,7 +124,7 @@ export function RegisterForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="name@example.com" {...field} disabled={isPending} />
+                  <Input placeholder="name@example.com" {...field} disabled={anyPending} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -134,7 +137,7 @@ export function RegisterForm() {
               <FormItem>
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="(123) 456-7890" {...field} disabled={isPending} />
+                  <Input placeholder="(123) 456-7890" {...field} disabled={anyPending} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -152,7 +155,7 @@ export function RegisterForm() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       {...field}
-                      disabled={isPending}
+                      disabled={anyPending}
                     />
                   </FormControl>
                   <button
@@ -160,7 +163,7 @@ export function RegisterForm() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    disabled={isPending}
+                    disabled={anyPending}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -169,7 +172,7 @@ export function RegisterForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={anyPending}>
             {isPending && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>
@@ -185,8 +188,8 @@ export function RegisterForm() {
           </span>
         </div>
       </div>
-      <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isPending}>
-        {isPending ? (
+      <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={anyPending}>
+        {isGooglePending ? (
           <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
         ) : (
           <GoogleIcon className="mr-2 h-5 w-5" />

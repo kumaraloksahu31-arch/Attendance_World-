@@ -40,6 +40,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [isGooglePending, startGoogleTransition] = React.useTransition();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -53,12 +54,12 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      const { error } = await signInWithEmail(values.email, values.password);
-      if (error) {
+      const result = await signInWithEmail(values.email, values.password);
+      if (result.error) {
         toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: error,
+          description: result.error,
         });
       } else {
         toast({
@@ -71,23 +72,25 @@ export function LoginForm() {
   }
 
   const handleGoogleSignIn = () => {
-    startTransition(async () => {
-      const { error } = await signInWithGoogle();
-      if (error) {
+    startGoogleTransition(async () => {
+      const result = await signInWithGoogle();
+      if (result.error) {
         toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: error,
+          description: result.error,
         });
       } else {
         toast({
           title: 'Login Successful',
-          description: 'Welcome back!',
+          description: 'Welcome!',
         });
         router.push('/dashboard');
       }
     });
   };
+  
+  const anyPending = isPending || isGooglePending;
 
   return (
     <div className="space-y-4">
@@ -100,7 +103,7 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="name@example.com" {...field} disabled={isPending} />
+                  <Input placeholder="name@example.com" {...field} disabled={anyPending} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -123,7 +126,7 @@ export function LoginForm() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       {...field}
-                      disabled={isPending}
+                      disabled={anyPending}
                     />
                   </FormControl>
                   <button
@@ -131,7 +134,7 @@ export function LoginForm() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    disabled={isPending}
+                    disabled={anyPending}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -140,7 +143,7 @@ export function LoginForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isPending}>
+          <Button type="submit" className="w-full" disabled={anyPending}>
             {isPending && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
           </Button>
@@ -156,8 +159,8 @@ export function LoginForm() {
           </span>
         </div>
       </div>
-      <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isPending}>
-        {isPending ? (
+      <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={anyPending}>
+        {isGooglePending ? (
           <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
         ) : (
           <GoogleIcon className="mr-2 h-5 w-5" />
