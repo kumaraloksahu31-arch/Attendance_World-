@@ -7,17 +7,21 @@ import {
   updateProfile,
   signInWithPopup,
   GoogleAuthProvider,
-  type Auth,
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { doc, setDoc, getDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 
-// Internal helper to initialize Firebase App and services exactly once.
+// Internal helper to initialize Firebase App and services on the CLIENT-SIDE ONLY.
 function getFirebaseServices() {
+  // Guard against server-side execution
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase can only be initialized on the client side.');
+  }
+
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
   const firestore = getFirestore(app);
@@ -52,7 +56,6 @@ const handleAuthError = (error: any): string => {
       case 'auth/cancelled-popup-request':
         return 'Sign-in cancelled. Please try again.';
       default:
-        // Log the specific error for debugging if needed
         console.error('Firebase Auth Error:', error.code, error.message);
         return `An unexpected error occurred. Please try again.`;
     }
