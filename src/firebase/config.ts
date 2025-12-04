@@ -4,7 +4,7 @@
 // example, we are including it directly.
 
 export const firebaseConfig = {
-    apiKey: "your_firebase_api_key_here",
+    apiKey: "AIzaSyDPG3aJ9bJ5r_P5e_y-xG_eYpI2Z3c_4kM",
     authDomain: "studio-4899358888-9bd13.firebaseapp.com",
     projectId: "studio-4899358888-9bd13",
     storageBucket: "studio-4899358888-9bd13.appspot.com",
