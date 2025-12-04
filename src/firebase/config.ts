@@ -1,10 +1,7 @@
 
-// This file is intentionally left blank. It will be populated with your
-// Firebase configuration by the Firebase CLI.
-//
-// In a real application, you would initialize Firebase with your project's
-// configuration object here. For this example, we will initialize it
-// in the provider.
+// This file contains the configuration for your Firebase project.
+// In a real application, you would secure this data, but for this
+// example, we are including it directly.
 
 export const firebaseConfig = {
     apiKey: "your_firebase_api_key_here",
@@ -14,4 +11,3 @@ export const firebaseConfig = {
     messagingSenderId: "549477142818",
     appId: "1:549477142818:web:ba8adff74b42da70cf957b"
 };
-
